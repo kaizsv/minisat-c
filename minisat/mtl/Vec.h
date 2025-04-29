@@ -98,9 +98,9 @@ template<class T, class _Size>
 void vec<T,_Size>::capacity(Size min_cap) {
     if (cap >= min_cap) return;
     Size add = max((min_cap - cap + 1) & ~1, ((cap >> 1) + 2) & ~1);   // NOTE: grow by approximately 3/2
-    const Size size_max = std::numeric_limits<Size>::max();
-    if ( ((size_max <= std::numeric_limits<int>::max()) && (add > size_max - cap))
-    ||   (((data = (T*)::realloc(data, (cap += add) * sizeof(T))) == NULL) && errno == ENOMEM) )
+    static const Size size_max = std::numeric_limits<Size>::max();
+    if ( ((add > size_max - cap))
+    ||   (((data = (T*)::realloc((void *)data, (cap += add) * sizeof(T))) == NULL) && errno == ENOMEM) )
         throw OutOfMemoryException();
  }
 
