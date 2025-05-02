@@ -71,6 +71,7 @@ endif
 
 SRCS = $(wildcard minisat/core/*.cc) $(wildcard minisat/simp/*.cc) $(wildcard minisat/utils/*.cc)
 HDRS = $(wildcard minisat/mtl/*.h) $(wildcard minisat/core/*.h) $(wildcard minisat/simp/*.h) $(wildcard minisat/utils/*.h)
+HDRS += minisat/c.h
 OBJS = $(filter-out %Main.o, $(SRCS:.cc=.o))
 
 r:	$(BUILD_DIR)/release/bin/$(MINISAT)
@@ -115,12 +116,12 @@ $(BUILD_DIR)/profile/bin/$(MINISAT_CORE):	$(BUILD_DIR)/profile/minisat/core/Main
 $(BUILD_DIR)/dynamic/bin/$(MINISAT_CORE): 	$(BUILD_DIR)/dynamic/minisat/core/Main.o $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB)
 
 ## Library dependencies
-$(BUILD_DIR)/release/lib/$(MINISAT_SLIB):	$(foreach o,$(OBJS),$(BUILD_DIR)/release/$(o))
-$(BUILD_DIR)/debug/lib/$(MINISAT_SLIB):		$(foreach o,$(OBJS),$(BUILD_DIR)/debug/$(o))
-$(BUILD_DIR)/profile/lib/$(MINISAT_SLIB):	$(foreach o,$(OBJS),$(BUILD_DIR)/profile/$(o))
+$(BUILD_DIR)/release/lib/$(MINISAT_SLIB): $(foreach o,$(OBJS),$(BUILD_DIR)/release/$(o)) $(BUILD_DIR)/release/minisat/c.o
+$(BUILD_DIR)/debug/lib/$(MINISAT_SLIB): $(foreach o,$(OBJS),$(BUILD_DIR)/debug/$(o)) $(BUILD_DIR)/debug/minisat/c.o
+$(BUILD_DIR)/profile/lib/$(MINISAT_SLIB): $(foreach o,$(OBJS),$(BUILD_DIR)/profile/$(o)) $(BUILD_DIR)/profile/minisat/c.o
 $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR).$(SOMINOR)$(SORELEASE)\
  $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR)\
- $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB):	$(foreach o,$(OBJS),$(BUILD_DIR)/dynamic/$(o))
+ $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB): $(foreach o,$(OBJS),$(BUILD_DIR)/dynamic/$(o)) $(BUILD_DIR)/dynamic/minisat/c.o
 
 ## Compile rules (these should be unified, buit I have not yet found a way which works in GNU Make)
 $(BUILD_DIR)/release/%.o:	%.cc
@@ -180,9 +181,13 @@ install-headers:
 	  $(INSTALL) -m 644 $$h $(DESTDIR)$(includedir)/$$h ; \
 	done
 
-install-lib-debug: $(BUILD_DIR)/debug/lib/$(MINISAT_SLIB)
+install-static-debug: $(BUILD_DIR)/debug/lib/$(MINISAT_SLIB) install-headers
 	$(INSTALL) -d $(DESTDIR)$(libdir)
 	$(INSTALL) -m 644 $(BUILD_DIR)/debug/lib/$(MINISAT_SLIB) $(DESTDIR)$(libdir)
+
+install-static-lib: $(BUILD_DIR)/release/lib/$(MINISAT_SLIB) install-headers
+	$(INSTALL) -d $(DESTDIR)$(libdir)
+	$(INSTALL) -m 644 $(BUILD_DIR)/release/lib/$(MINISAT_SLIB) $(DESTDIR)$(libdir)
 
 install-lib: $(BUILD_DIR)/release/lib/$(MINISAT_SLIB) $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR).$(SOMINOR)$(SORELEASE)
 	$(INSTALL) -d $(DESTDIR)$(libdir)
