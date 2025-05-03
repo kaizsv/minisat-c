@@ -3,8 +3,7 @@
 using namespace Minisat;
 
 struct minisat_solver: public SimpSolver {
-    vec<Lit> clause;
-    vec<Lit> assumps;
+    vec<Lit> lits;
 };
 
 extern "C" {
@@ -67,18 +66,17 @@ int minisat_conflict_len(struct minisat_solver *s)
 
 bool minisat_solve(struct minisat_solver *s, int len, const minisat_lit *ps)
 {
-    s->assumps.clear();
-    for (int i = 0; i < len; ++i)
-        s->assumps.push(toLit(*ps++));
-    return s->solveLimited(s->assumps) == l_True;
+    return s->solveLimited(len, ps) == l_True;
 }
 
 bool minisat_add_clause(struct minisat_solver *s, int len, const minisat_lit *ps)
 {
-    s->clause.clear();
+    s->lits.growTo(len);
+    s->lits.setsz(len);
+    Lit *lits = (Lit *) s->lits;
     for (int i = 0; i < len; ++i)
-        s->clause.push(toLit(*ps++));
-    return s->addClause_(s->clause);
+        lits[i].x = *ps++;
+    return s->addClause_(s->lits);
 }
 
 }

@@ -63,7 +63,7 @@ class SimpSolver : public Solver {
     // Solving:
     //
     bool    solve       (const vec<Lit>& assumps, bool do_simp = true, bool turn_off_simp = false);
-    lbool   solveLimited(const vec<Lit>& assumps, bool do_simp = true, bool turn_off_simp = false);
+    lbool   solveLimited(int, const int *, bool do_simp = true, bool turn_off_simp = false);
     bool    solve       (                     bool do_simp = true, bool turn_off_simp = false);
     bool    solve       (Lit p       ,        bool do_simp = true, bool turn_off_simp = false);       
     bool    solve       (Lit p, Lit q,        bool do_simp = true, bool turn_off_simp = false);
@@ -213,8 +213,13 @@ inline bool SimpSolver::solve        (Lit p, Lit q, Lit r, bool do_simp, bool tu
 inline bool SimpSolver::solve        (const vec<Lit>& assumps, bool do_simp, bool turn_off_simp){ 
     budgetOff(); assumps.copyTo(assumptions); return solve_(do_simp, turn_off_simp) == l_True; }
 
-inline lbool SimpSolver::solveLimited (const vec<Lit>& assumps, bool do_simp, bool turn_off_simp){ 
-    assumps.copyTo(assumptions); return solve_(do_simp, turn_off_simp); }
+inline lbool SimpSolver::solveLimited (int len, const int *lits, bool do_simp, bool turn_off_simp) {
+    assumptions.growTo(len);
+    assumptions.setsz(len);
+    for (int i = 0; i < len; ++i)
+        assumptions[i].x = *lits++;
+    return solve_(do_simp, turn_off_simp);
+}
 
 //=================================================================================================
 }

@@ -44,7 +44,7 @@ typedef int Var;
 #if defined(MINISAT_CONSTANTS_AS_MACROS)
 #define var_Undef (-1)
 #else
-  const Var var_Undef = -1;
+  extern const Var var_Undef;
 #endif
 
 
@@ -71,11 +71,8 @@ inline  int  toInt     (Var v)              { return v; }
 inline  int  toInt     (Lit p)              { return p.x; } 
 inline  Lit  toLit     (int i)              { Lit p; p.x = i; return p; } 
 
-//const Lit lit_Undef = mkLit(var_Undef, false);  // }- Useful special constants.
-//const Lit lit_Error = mkLit(var_Undef, true );  // }
-
-const Lit lit_Undef = { -2 };  // }- Useful special constants.
-const Lit lit_Error = { -1 };  // }
+extern const Lit lit_Undef;
+extern const Lit lit_Error;
 
 struct MkIndexLit { vec<Lit>::Size operator()(Lit l) const { return vec<Lit>::Size(l.x); } };
 
@@ -125,9 +122,9 @@ inline lbool toLbool(int   v) { return lbool((uint8_t)v);  }
   #define l_False (lbool((uint8_t)1))
   #define l_Undef (lbool((uint8_t)2))
 #else
-  const lbool l_True ((uint8_t)0);
-  const lbool l_False((uint8_t)1);
-  const lbool l_Undef((uint8_t)2);
+  extern const lbool l_True;
+  extern const lbool l_False;
+  extern const lbool l_Undef;
 #endif
 
 
@@ -372,7 +369,8 @@ void OccLists<K,Vec,Deleted,MkIndex>::clean(const K& idx)
 {
     Vec& vec = occs[idx];
     int  i, j;
-    for (i = j = 0; i < vec.size(); i++)
+    const int size = vec.size();
+    for (i = j = 0; i < size; ++i)
         if (!deleted(vec[i]))
             vec[j++] = vec[i];
     vec.shrink(i - j);

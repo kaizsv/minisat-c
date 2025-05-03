@@ -30,6 +30,12 @@ using namespace Minisat;
 //=================================================================================================
 // Options:
 
+const Var Minisat::var_Undef = -1;
+const Lit Minisat::lit_Undef = { -2 };
+const Lit Minisat::lit_Error = { -1 };
+const lbool Minisat::l_True = lbool((uint8_t)0);
+const lbool Minisat::l_False = lbool((uint8_t)1);
+const lbool Minisat::l_Undef = lbool((uint8_t)2);
 
 static const char* _cat = "CORE";
 
@@ -159,11 +165,14 @@ bool Solver::addClause_(vec<Lit>& ps)
     // Check if clause is satisfied and remove false/duplicate literals:
     sort(ps);
     Lit p; int i, j;
-    for (i = j = 0, p = lit_Undef; i < ps.size(); i++)
-        if (value(ps[i]) == l_True || ps[i] == ~p)
+    const int pssize = ps.size();
+    for (i = j = 0, p = lit_Undef; i < pssize; ++i) {
+        const Lit psi = ps[i];
+        if (value(psi) == l_True || psi == ~p)
             return true;
-        else if (value(ps[i]) != l_False && ps[i] != p)
-            ps[j++] = p = ps[i];
+        else if (value(psi) != l_False && psi != p)
+            ps[j++] = p = psi;
+    }
     ps.shrink(i - j);
 
     if (ps.size() == 0)
@@ -230,16 +239,21 @@ bool Solver::satisfied(const Clause& c) const {
 //
 void Solver::cancelUntil(int level) {
     if (decisionLevel() > level){
-        for (int c = trail.size()-1; c >= trail_lim[level]; c--){
+        int lim = trail_lim[level];
+        int last = trail_lim.last();
+        for (int c = trail.size()-1; c >= lim; c--){
             Var      x  = var(trail[c]);
             assigns [x] = l_Undef;
-            if (phase_saving > 1 || (phase_saving == 1 && c > trail_lim.last()))
+            if (phase_saving > 1 || (phase_saving == 1 && c > last))
                 polarity[x] = sign(trail[c]);
             insertVarOrder(x); }
-        qhead = trail_lim[level];
-        trail.shrink(trail.size() - trail_lim[level]);
+        qhead = lim;
+        trail.shrink(trail.size() - lim);
         trail_lim.shrink(trail_lim.size() - level);
-    } }
+        lim = trail_lim[level];
+        last = trail_lim.last();
+    }
+}
 
 
 //=================================================================================================
@@ -510,11 +524,13 @@ CRef Solver::propagate()
 
     while (qhead < trail.size()){
         Lit            p   = trail[qhead++];     // 'p' is enqueued fact to propagate.
+        Lit    false_lit   = ~p;
         vec<Watcher>&  ws  = watches.lookup(p);
-        Watcher        *i, *j, *end;
         num_props++;
 
-        for (i = j = (Watcher*)ws, end = i + ws.size();  i != end;){
+        Watcher *i = (Watcher *) ws, *j = i;
+        const Watcher *end = i + ws.size();
+        while (i < end) {
             // Try to avoid inspecting the clause:
             Lit blocker = i->blocker;
             if (value(blocker) == l_True){
@@ -523,7 +539,6 @@ CRef Solver::propagate()
             // Make sure the false literal is data[1]:
             CRef     cr        = i->cref;
             Clause&  c         = ca[cr];
-            Lit      false_lit = ~p;
             if (c[0] == false_lit)
                 c[0] = c[1], c[1] = false_lit;
             assert(c[1] == false_lit);
@@ -536,7 +551,8 @@ CRef Solver::propagate()
                 *j++ = w; continue; }
 
             // Look for new watch:
-            for (int k = 2; k < c.size(); k++)
+            const int csize = c.size();
+            for (int k = 2; k < csize; ++k)
                 if (value(c[k]) != l_False){
                     c[1] = c[k]; c[k] = false_lit;
                     watches[~c[1]].push(w);
@@ -702,6 +718,7 @@ bool Solver::simplify()
 lbool Solver::search(int nof_conflicts)
 {
     assert(ok);
+    const int   assumptions_size = assumptions.size();
     int         backtrack_level;
     int         conflictC = 0;
     vec<Lit>    learnt_clause;
@@ -760,7 +777,7 @@ lbool Solver::search(int nof_conflicts)
                 reduceDB();
 
             Lit next = lit_Undef;
-            while (decisionLevel() < assumptions.size()){
+            while (decisionLevel() < assumptions_size){
                 // Perform user provided assumption:
                 Lit p = assumptions[decisionLevel()];
                 if (value(p) == l_True){

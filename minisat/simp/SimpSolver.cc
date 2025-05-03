@@ -112,7 +112,8 @@ lbool SimpSolver::solve_(bool do_simp, bool turn_off_simp)
 
     if (do_simp){
         // Assumptions must be temporarily frozen to run variable elimination:
-        for (int i = 0; i < assumptions.size(); i++){
+        const int size = assumptions.size();
+        for (int i = 0; i < size; ++i){
             Var v = var(assumptions[i]);
 
             // If an assumption has been eliminated, remember it.
@@ -135,10 +136,12 @@ lbool SimpSolver::solve_(bool do_simp, bool turn_off_simp)
     if (result == l_True && extend_model)
         extendModel();
 
-    if (do_simp)
+    if (do_simp) {
         // Unfreeze the assumptions that were frozen:
-        for (int i = 0; i < extra_frozen.size(); i++)
+        const int size = extra_frozen.size();
+        for (int i = 0; i < size; ++i)
             setFrozen(extra_frozen[i], false);
+    }
 
     return result;
 }
@@ -236,21 +239,22 @@ bool SimpSolver::merge(const Clause& _ps, const Clause& _qs, Var v, vec<Lit>& ou
     const Clause& ps  =  ps_smallest ? _qs : _ps;
     const Clause& qs  =  ps_smallest ? _ps : _qs;
 
-    for (int i = 0; i < qs.size(); i++){
-        if (var(qs[i]) != v){
-            for (int j = 0; j < ps.size(); j++)
-                if (var(ps[j]) == var(qs[i])){
-                    if (ps[j] == ~qs[i])
-                        return false;
-                    else
-                        goto next;
-                }
-            out_clause.push(qs[i]);
+    const int pssize = ps.size();
+    const int qssize = qs.size();
+    for (int i = 0; i < qssize; ++i){
+        Lit l = qs[i];
+        if (var(l) != v){
+            for (int j = 0; j < pssize; j++)
+                if (ps[j] == ~l)
+                    return false;
+                else if (ps[j] == l)
+                    goto next;
+            out_clause.push(l);
         }
         next:;
     }
 
-    for (int i = 0; i < ps.size(); i++)
+    for (int i = 0; i < pssize; ++i)
         if (var(ps[i]) != v)
             out_clause.push(ps[i]);
 
@@ -266,20 +270,19 @@ bool SimpSolver::merge(const Clause& _ps, const Clause& _qs, Var v, int& size)
     bool  ps_smallest = _ps.size() < _qs.size();
     const Clause& ps  =  ps_smallest ? _qs : _ps;
     const Clause& qs  =  ps_smallest ? _ps : _qs;
-    const Lit*  __ps  = (const Lit*)ps;
-    const Lit*  __qs  = (const Lit*)qs;
 
     size = ps.size()-1;
 
-    for (int i = 0; i < qs.size(); i++){
-        if (var(__qs[i]) != v){
-            for (int j = 0; j < ps.size(); j++)
-                if (var(__ps[j]) == var(__qs[i])){
-                    if (__ps[j] == ~__qs[i])
-                        return false;
-                    else
-                        goto next;
-                }
+    const int qssize = qs.size();
+    const int pssize = ps.size();
+    for (int i = 0; i < qssize; ++i){
+        Lit l = qs[i];
+        if (var(l) != v){
+            for (int j = 0; j < pssize; ++j)
+                if (ps[j] == ~l)
+                    return false;
+                else if (ps[j] == l)
+                    goto next;
             size++;
         }
         next:;
@@ -578,16 +581,16 @@ bool SimpSolver::substitute(Var v, Lit x)
 void SimpSolver::extendModel()
 {
     int i, j;
-    Lit x;
+    uint32_t x;
 
     for (i = elimclauses.size()-1; i > 0; i -= j){
-        for (j = elimclauses[i--]; j > 1; j--, i--)
-            if (modelValue(toLit(elimclauses[i])) != l_False)
+        for (j = elimclauses[i], x = elimclauses[--i]; j > 1; --j, x = elimclauses[--i]) {
+            if ((toInt(model[x >> 1]) ^ (x & 1)) != 1)
                 goto next;
-
-        x = toLit(elimclauses[i]);
-        model[var(x)] = lbool(!sign(x));
-    next:;
+        }
+        model[x >> 1] = lbool(!(x & 1));
+next:
+        ;
     }
 }
 
