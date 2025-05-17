@@ -41,7 +41,8 @@ void selectionSort(T* array, int size, LessThan lt)
     int     i, j, best_i;
     T       tmp;
 
-    for (i = 0; i < size-1; i++){
+    const int mone = size - 1;
+    for (i = 0; i < mone; i++){
         best_i = i;
         for (j = i+1; j < size; j++){
             if (lt(array[j], array[best_i]))

@@ -24,6 +24,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "minisat/mtl/XAlloc.h"
 #include "minisat/mtl/Vec.h"
 
+static const uint32_t START_CAP = 1024 * 1024;
 namespace Minisat {
 
 //=================================================================================================
@@ -45,7 +46,7 @@ class RegionAllocator
     enum { Ref_Undef = UINT32_MAX };
     enum { Unit_Size = sizeof(T) };
 
-    explicit RegionAllocator(uint32_t start_cap = 1024*1024) : memory(NULL), sz(0), cap(0), wasted_(0){ capacity(start_cap); }
+    explicit RegionAllocator(uint32_t start_cap = START_CAP) : memory(NULL), sz(0), cap(0), wasted_(0){ capacity(start_cap); }
     ~RegionAllocator()
     {
         if (memory != NULL)

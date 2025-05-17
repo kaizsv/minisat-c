@@ -45,7 +45,7 @@ static inline uint32_t hash(int64_t x) { return (uint32_t)x; }
 // Some primes
 //
 
-static const int nprimes          = 25;
+#define nprimes 25
 static const int primes [nprimes] = { 31, 73, 151, 313, 643, 1291, 2593, 5233, 10501, 21013, 42073, 84181, 168451, 337219, 674701, 1349473, 2699299, 5398891, 10798093, 21596719, 43193641, 86387383, 172775299, 345550609, 691101253 };
 
 //=================================================================================================
@@ -87,9 +87,13 @@ class Map {
         table = new vec<Pair>[newsize];
         cap   = newsize;
 
-        for (int i = 0; i < old_cap; i++){
-            for (int j = 0; j < old[i].size(); j++){
-                _insert(old[i][j].key, old[i][j].data); }}
+        for (int i = 0; i < old_cap; i++) {
+            const vec<Pair> p = old[i];
+            const int psize = p.size();
+            for (int j = 0; j < psize; j++) {
+                _insert(p[j].key, p[j].data);
+            }
+        }
 
         delete [] old;
 
@@ -109,7 +113,8 @@ class Map {
         assert(size != 0);
         const D*         res = NULL;
         const vec<Pair>& ps  = table[index(k)];
-        for (int i = 0; i < ps.size(); i++)
+        const int pssize = ps.size();
+        for (int i = 0; i < pssize; i++)
             if (equals(ps[i].key, k))
                 res = &ps[i].data;
         assert(res != NULL);
@@ -122,7 +127,8 @@ class Map {
         assert(size != 0);
         D*         res = NULL;
         vec<Pair>& ps  = table[index(k)];
-        for (int i = 0; i < ps.size(); i++)
+        int pssize = ps.size();
+        for (int i = 0; i < pssize; i++)
             if (equals(ps[i].key, k))
                 res = &ps[i].data;
         assert(res != NULL);
@@ -134,7 +140,8 @@ class Map {
     bool peek   (const K& k, D& d) const {
         if (size == 0) return false;
         const vec<Pair>& ps = table[index(k)];
-        for (int i = 0; i < ps.size(); i++)
+        const int pssize = ps.size();
+        for (int i = 0; i < pssize; i++)
             if (equals(ps[i].key, k)){
                 d = ps[i].data;
                 return true; } 
@@ -144,7 +151,8 @@ class Map {
     bool has   (const K& k) const {
         if (size == 0) return false;
         const vec<Pair>& ps = table[index(k)];
-        for (int i = 0; i < ps.size(); i++)
+        const int pssize = ps.size();
+        for (int i = 0; i < pssize; i++)
             if (equals(ps[i].key, k))
                 return true;
         return false;
@@ -154,9 +162,9 @@ class Map {
     void remove(const K& k) {
         assert(table != NULL);
         vec<Pair>& ps = table[index(k)];
-        int j = 0;
-        for (; j < ps.size() && !equals(ps[j].key, k); j++);
-        assert(j < ps.size());
+        int j = 0, pssize = ps.size();
+        for (; j < pssize && !equals(ps[j].key, k); j++);
+        assert(j < pssize);
         ps[j] = ps.last();
         ps.pop();
         size--;

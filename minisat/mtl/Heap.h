@@ -142,7 +142,8 @@ class Heap {
             indices[heap[i]] = -1;
         heap.clear();
 
-        for (int i = 0; i < ns.size(); i++){
+        const int nssize = ns.size();
+        for (int i = 0; i < nssize; i++){
             // TODO: this should probably call reserve instead of relying on it being reserved already.
             assert(indices.has(ns[i]));
             indices[ns[i]] = i;

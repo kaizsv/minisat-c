@@ -41,11 +41,8 @@ static const char* _cat = "CORE";
 
 static DoubleOption  opt_var_decay         (_cat, "var-decay",   "The variable activity decay factor",            0.95,     DoubleRange(0, false, 1, false));
 static DoubleOption  opt_clause_decay      (_cat, "cla-decay",   "The clause activity decay factor",              0.999,    DoubleRange(0, false, 1, false));
-static DoubleOption  opt_random_var_freq   (_cat, "rnd-freq",    "The frequency with which the decision heuristic tries to choose a random variable", 0, DoubleRange(0, true, 1, true));
-static DoubleOption  opt_random_seed       (_cat, "rnd-seed",    "Used by the random variable selection",         91648253, DoubleRange(0, false, HUGE_VAL, false));
 static IntOption     opt_ccmin_mode        (_cat, "ccmin-mode",  "Controls conflict clause minimization (0=none, 1=basic, 2=deep)", 2, IntRange(0, 2));
 static IntOption     opt_phase_saving      (_cat, "phase-saving", "Controls the level of phase saving (0=none, 1=limited, 2=full)", 2, IntRange(0, 2));
-static BoolOption    opt_rnd_init_act      (_cat, "rnd-init",    "Randomize the initial activity", false);
 static BoolOption    opt_luby_restart      (_cat, "luby",        "Use the Luby restart sequence", true);
 static IntOption     opt_restart_first     (_cat, "rfirst",      "The base restart interval", 100, IntRange(1, INT32_MAX));
 static DoubleOption  opt_restart_inc       (_cat, "rinc",        "Restart interval increase factor", 2, DoubleRange(1, false, HUGE_VAL, false));
@@ -64,13 +61,9 @@ Solver::Solver() :
     verbosity        (0)
   , var_decay        (opt_var_decay)
   , clause_decay     (opt_clause_decay)
-  , random_var_freq  (opt_random_var_freq)
-  , random_seed      (opt_random_seed)
   , luby_restart     (opt_luby_restart)
   , ccmin_mode       (opt_ccmin_mode)
   , phase_saving     (opt_phase_saving)
-  , rnd_pol          (false)
-  , rnd_init_act     (opt_rnd_init_act)
   , garbage_frac     (opt_garbage_frac)
   , min_learnts_lim  (opt_min_learnts_lim)
   , restart_first    (opt_restart_first)
@@ -87,7 +80,7 @@ Solver::Solver() :
 
     // Statistics: (formerly in 'SolverStats')
     //
-  , solves(0), starts(0), decisions(0), rnd_decisions(0), propagations(0), conflicts(0)
+  , solves(0), starts(0), decisions(0), propagations(0), conflicts(0)
   , dec_vars(0), num_clauses(0), num_learnts(0), clauses_literals(0), learnts_literals(0), max_literals(0), tot_literals(0)
 
   , watches            (WatcherDeleted(ca))
@@ -135,7 +128,7 @@ Var Solver::newVar(lbool upol, bool dvar)
     watches  .init(mkLit(v, true ));
     assigns  .insert(v, l_Undef);
     vardata  .insert(v, mkVarData(CRef_Undef, 0));
-    activity .insert(v, rnd_init_act ? drand(random_seed) * 0.00001 : 0);
+    activity .insert(v, 0);
     seen     .insert(v, 0);
     polarity .insert(v, true);
     user_pol .insert(v, upol);
@@ -262,29 +255,23 @@ void Solver::cancelUntil(int level) {
 
 Lit Solver::pickBranchLit()
 {
-    Var next = var_Undef;
-
-    // Random decision:
-    if (drand(random_seed) < random_var_freq && !order_heap.empty()){
-        next = order_heap[irand(random_seed,order_heap.size())];
-        if (value(next) == l_Undef && decision[next])
-            rnd_decisions++; }
+    Var next;
 
     // Activity based decision:
-    while (next == var_Undef || value(next) != l_Undef || !decision[next])
-        if (order_heap.empty()){
+    do {
+        if (order_heap.empty()) {
             next = var_Undef;
             break;
-        }else
+        } else {
             next = order_heap.removeMin();
+        }
+    } while (value(next) != l_Undef || !decision[next]);
 
     // Choose polarity based on different polarity modes (global or per-variable):
     if (next == var_Undef)
         return lit_Undef;
     else if (user_pol[next] != l_Undef)
         return mkLit(next, user_pol[next] == l_True);
-    else if (rnd_pol)
-        return mkLit(next, drand(random_seed) < 0.5);
     else
         return mkLit(next, polarity[next]);
 }
@@ -324,7 +311,8 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
         if (c.learnt())
             claBumpActivity(c);
 
-        for (int j = (p == lit_Undef) ? 0 : 1; j < c.size(); j++){
+        const int csize = c.size();
+        for (int j = (p == lit_Undef) ? 0 : 1; j < csize; j++){
             Lit q = c[j];
 
             if (!seen[var(q)] && level(var(q)) > 0){
@@ -1011,7 +999,7 @@ void Solver::printStats() const
     double mem_used = memUsedPeak();
     printf("restarts              : %" PRIu64 "\n", starts);
     printf("conflicts             : %-12" PRIu64 "   (%.0f /sec)\n", conflicts   , conflicts   /cpu_time);
-    printf("decisions             : %-12" PRIu64 "   (%4.2f %% random) (%.0f /sec)\n", decisions, (float)rnd_decisions*100 / (float)decisions, decisions   /cpu_time);
+    printf("decisions             : %-12" PRIu64 "   (%.0f /sec)\n", decisions, decisions   /cpu_time);
     printf("propagations          : %-12" PRIu64 "   (%.0f /sec)\n", propagations, propagations/cpu_time);
     printf("conflict literals     : %-12" PRIu64 "   (%4.2f %% deleted)\n", tot_literals, (max_literals - tot_literals)*100 / (double)max_literals);
     if (mem_used != 0) printf("Memory used           : %.2f MB\n", mem_used);

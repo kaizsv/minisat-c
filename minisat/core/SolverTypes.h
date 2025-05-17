@@ -61,8 +61,8 @@ struct Lit {
 
 
 inline  Lit  mkLit     (Var var, bool sign = false) { Lit p; p.x = var + var + (int)sign; return p; }
-inline  Lit  operator ~(Lit p)              { Lit q; q.x = p.x ^ 1; return q; }
-inline  Lit  operator ^(Lit p, bool b)      { Lit q; q.x = p.x ^ (unsigned int)b; return q; }
+inline  Lit  operator ~(Lit p)              { p.x ^= 1; return p; }
+inline  Lit  operator ^(Lit p, bool b)      { p.x ^= (unsigned int)b; return p; }
 inline  bool sign      (Lit p)              { return p.x & 1; }
 inline  int  var       (Lit p)              { return p.x >> 1; }
 
@@ -153,7 +153,7 @@ class Clause {
         header.reloced   = 0;
         header.size      = ps.size();
 
-        for (int i = 0; i < ps.size(); i++) 
+        for (int i = 0; i < header.size; i++)
             data[i].lit = ps[i];
 
         if (header.has_extra){
@@ -169,7 +169,8 @@ class Clause {
         header           = from.header;
         header.has_extra = use_extra;   // NOTE: the copied clause may lose the extra field.
 
-        for (int i = 0; i < from.size(); i++)
+        const int fromsize = from.size();
+        for (int i = 0; i < fromsize; i++)
             data[i].lit = from[i];
 
         if (header.has_extra){
