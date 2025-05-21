@@ -132,8 +132,7 @@ int main(int argc, char** argv)
         lbool ret = l_Undef;
 
         if (solve){
-            vec<Lit> dummy;
-            ret = S.solveLimited(dummy);
+            ret = S.solveLimited(0, NULL);
         }else if (S.verbosity > 0)
             printf("===============================================================================\n");
 
