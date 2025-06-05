@@ -19,8 +19,6 @@ bool minisat_okay(struct minisat_solver *);
 void minisat_setDecisionVar(struct minisat_solver *, minisat_var, bool);
 minisat_var minisat_new_var(struct minisat_solver *, minisat_lbool, bool);
 bool minisat_add_clause(struct minisat_solver *, int, const minisat_lit *);
-bool minisat_eliminate(struct minisat_solver *, bool);
-void minisat_freeze_var(struct minisat_solver *, minisat_var, bool);
 bool minisat_solve(struct minisat_solver *, int, const minisat_lit *);
 
 minisat_lbool minisat_modelValue_Var(struct minisat_solver *, minisat_var);

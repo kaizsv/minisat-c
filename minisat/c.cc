@@ -1,8 +1,8 @@
-#include "minisat/simp/SimpSolver.h"
+#include "minisat/core/Solver.h"
 
 using namespace Minisat;
 
-struct minisat_solver: public SimpSolver {
+struct minisat_solver: public Solver {
     vec<Lit> lits;
 };
 
@@ -43,16 +43,6 @@ minisat_var minisat_new_var(struct minisat_solver *s,
                             minisat_lbool b, bool undc)
 {
     return s->newVar(fromC[b], undc);
-}
-
-bool minisat_eliminate(struct minisat_solver *s, bool turn_off_elim)
-{
-    return s->eliminate(turn_off_elim);
-}
-
-void minisat_freeze_var(struct minisat_solver *s, minisat_var v, bool b)
-{
-    s->setFrozen(v, b);
 }
 
 minisat_lbool minisat_modelValue_Var(struct minisat_solver *s, minisat_var v)

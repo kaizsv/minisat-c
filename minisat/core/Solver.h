@@ -60,7 +60,7 @@ public:
     //
     bool    simplify     ();                        // Removes already satisfied clauses.
     bool    solve        (const vec<Lit>& assumps); // Search for a model that respects a given set of assumptions.
-    lbool   solveLimited (const vec<Lit>& assumps); // Search for a model that respects a given set of assumptions (With resource constraints).
+    lbool   solveLimited (int, const int *);        // Search for a model that respects a given set of assumptions (With resource constraints).
     bool    solve        ();                        // Search without assumptions.
     bool    solve        (Lit p);                   // Search for a model that respects a single assumption.
     bool    solve        (Lit p, Lit q);            // Search for a model that respects two assumptions.
@@ -380,7 +380,13 @@ inline bool     Solver::solve         (Lit p)               { budgetOff(); assum
 inline bool     Solver::solve         (Lit p, Lit q)        { budgetOff(); assumptions.clear(); assumptions.push(p); assumptions.push(q); return solve_() == l_True; }
 inline bool     Solver::solve         (Lit p, Lit q, Lit r) { budgetOff(); assumptions.clear(); assumptions.push(p); assumptions.push(q); assumptions.push(r); return solve_() == l_True; }
 inline bool     Solver::solve         (const vec<Lit>& assumps){ budgetOff(); assumps.copyTo(assumptions); return solve_() == l_True; }
-inline lbool    Solver::solveLimited  (const vec<Lit>& assumps){ assumps.copyTo(assumptions); return solve_(); }
+inline lbool    Solver::solveLimited  (int len, const int *lits) {
+    assumptions.growTo(len);
+    assumptions.setsz(len);
+    for (int i = 0; i < len; ++i)
+        (assumptions + i)->x = *lits++;
+    return solve_();
+}
 inline bool     Solver::okay          ()      const   { return ok; }
 
 inline ClauseIterator Solver::clausesBegin() const { return ClauseIterator(ca, &clauses[0]); }

@@ -120,8 +120,7 @@ int main(int argc, char** argv)
             exit(20);
         }
         
-        vec<Lit> dummy;
-        lbool ret = S.solveLimited(dummy);
+        lbool ret = S.solveLimited(0, NULL);
         if (S.verbosity > 0){
             S.printStats();
             printf("\n"); }
