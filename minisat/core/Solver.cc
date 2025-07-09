@@ -144,7 +144,7 @@ Var Solver::newVar(lbool upol, bool dvar)
 void Solver::releaseVar(Lit l)
 {
     if (value(l) == l_Undef){
-        addClause(l);
+        add_clause(l.x);
         released_vars.push(var(l));
     }
 }
@@ -157,16 +157,18 @@ bool Solver::addClause_(vec<Lit>& ps)
 
     // Check if clause is satisfied and remove false/duplicate literals:
     sort(ps);
-    Lit p; int i, j;
-    const int pssize = ps.size();
-    for (i = j = 0, p = lit_Undef; i < pssize; ++i) {
-        const Lit psi = ps[i];
-        if (value(psi) == l_True || psi == ~p)
+    Lit p = lit_Undef;
+    int j = 0;
+    const Lit *i = (Lit *) ps;
+    const Lit *end = i + ps.size();
+    while (i < end) {
+        if (value(*i) == l_True || *i == ~p)
             return true;
-        else if (value(psi) != l_False && psi != p)
-            ps[j++] = p = psi;
+        else if (value(*i) != l_False && *i != p)
+            ps[j++] = p = *i;
+        i += 1;
     }
-    ps.shrink(i - j);
+    ps.setsz(j);
 
     if (ps.size() == 0)
         return ok = false;

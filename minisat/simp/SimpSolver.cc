@@ -99,7 +99,7 @@ void SimpSolver::releaseVar(Lit l)
         Solver::releaseVar(l);
     else
         // Otherwise, don't allow variable to be reused.
-        Solver::addClause(l);
+        Solver::add_clause(l.x);
 }
 
 

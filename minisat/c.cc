@@ -2,9 +2,7 @@
 
 using namespace Minisat;
 
-struct minisat_solver: public Solver {
-    vec<Lit> lits;
-};
+struct minisat_solver: public Solver {};
 
 extern "C" {
 
@@ -67,12 +65,22 @@ bool minisat_solve(struct minisat_solver *s, int len, const minisat_lit *ps)
 
 bool minisat_add_clause(struct minisat_solver *s, int len, const minisat_lit *ps)
 {
-    s->lits.growTo(len);
-    s->lits.setsz(len);
-    Lit *lits = (Lit *) s->lits;
-    for (int i = 0; i < len; ++i)
-        lits[i].x = *ps++;
-    return s->addClause_(s->lits);
+    return s->add_clause(len, ps);
+}
+
+bool minisat_add_clause1(struct minisat_solver *s, int l1)
+{
+    return s->add_clause(l1);
+}
+
+bool minisat_add_clause2(struct minisat_solver *s, int l1, int l2)
+{
+    return s->add_clause(l1, l2);
+}
+
+bool minisat_add_clause3(struct minisat_solver *s, int l1, int l2, int l3)
+{
+    return s->add_clause(l1, l2, l3);
 }
 
 }

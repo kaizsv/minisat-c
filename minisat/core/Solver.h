@@ -47,14 +47,12 @@ public:
     Var     newVar    (lbool upol = l_Undef, bool dvar = true); // Add a new variable with parameters specifying variable mode.
     void    releaseVar(Lit l);                                  // Make literal true and promise to never refer to variable again.
 
-    bool    addClause (const vec<Lit>& ps);                     // Add a clause to the solver. 
-    bool    addEmptyClause();                                   // Add the empty clause, making the solver contradictory.
-    bool    addClause (Lit p);                                  // Add a unit clause to the solver. 
-    bool    addClause (Lit p, Lit q);                           // Add a binary clause to the solver. 
-    bool    addClause (Lit p, Lit q, Lit r);                    // Add a ternary clause to the solver. 
-    bool    addClause (Lit p, Lit q, Lit r, Lit s);             // Add a quaternary clause to the solver. 
     bool    addClause_(      vec<Lit>& ps);                     // Add a clause to the solver without making superflous internal copy. Will
                                                                 // change the passed vector 'ps'.
+    bool add_clause(int, const int *);
+    bool add_clause(int);
+    bool add_clause(int, int);
+    bool add_clause(int, int, int);
 
     // Solving:
     //
@@ -330,12 +328,40 @@ inline void Solver::checkGarbage(double gf){
 
 // NOTE: enqueue does not set the ok flag! (only public methods do)
 inline bool     Solver::enqueue         (Lit p, CRef from)      { return value(p) != l_Undef ? value(p) != l_False : (uncheckedEnqueue(p, from), true); }
-inline bool     Solver::addClause       (const vec<Lit>& ps)    { ps.copyTo(add_tmp); return addClause_(add_tmp); }
-inline bool     Solver::addEmptyClause  ()                      { add_tmp.clear(); return addClause_(add_tmp); }
-inline bool     Solver::addClause       (Lit p)                 { add_tmp.clear(); add_tmp.push(p); return addClause_(add_tmp); }
-inline bool     Solver::addClause       (Lit p, Lit q)          { add_tmp.clear(); add_tmp.push(p); add_tmp.push(q); return addClause_(add_tmp); }
-inline bool     Solver::addClause       (Lit p, Lit q, Lit r)   { add_tmp.clear(); add_tmp.push(p); add_tmp.push(q); add_tmp.push(r); return addClause_(add_tmp); }
-inline bool     Solver::addClause       (Lit p, Lit q, Lit r, Lit s){ add_tmp.clear(); add_tmp.push(p); add_tmp.push(q); add_tmp.push(r); add_tmp.push(s); return addClause_(add_tmp); }
+
+inline bool Solver::add_clause(int len, const int *lits) {
+    add_tmp.growTo(len);
+    add_tmp.setsz(len);
+    Lit *tmp = (Lit *) add_tmp;
+    const int *end = lits + len;
+    while (lits < end)
+        (tmp++)->x = *lits++;
+    return addClause_(add_tmp);
+}
+
+inline bool Solver::add_clause(int l1) {
+    add_tmp.growTo(1);
+    add_tmp.setsz(1);
+    add_tmp[0].x = l1;
+    return addClause_(add_tmp);
+}
+
+inline bool Solver::add_clause(int l1, int l2) {
+    add_tmp.growTo(2);
+    add_tmp.setsz(2);
+    add_tmp[0].x = l1;
+    add_tmp[1].x = l2;
+    return addClause_(add_tmp);
+}
+
+inline bool Solver::add_clause(int l1, int l2, int l3) {
+    add_tmp.growTo(3);
+    add_tmp.setsz(3);
+    add_tmp[0].x = l1;
+    add_tmp[1].x = l2;
+    add_tmp[2].x = l3;
+    return addClause_(add_tmp);
+}
 
 inline bool     Solver::isRemoved       (CRef cr)         const { return ca[cr].mark() == 1; }
 inline bool     Solver::locked          (const Clause& c) const { return value(c[0]) == l_True && reason(var(c[0])) != CRef_Undef && ca.lea(reason(var(c[0]))) == &c; }
