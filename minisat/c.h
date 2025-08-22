@@ -22,6 +22,9 @@ bool minisat_add_clause(struct minisat_solver *, int, const minisat_lit *);
 bool minisat_add_clause1(struct minisat_solver *, int);
 bool minisat_add_clause2(struct minisat_solver *, int, int);
 bool minisat_add_clause3(struct minisat_solver *, int, int, int);
+void minisat_release_act(struct minisat_solver *);
+void minisat_set_act(struct minisat_solver *);
+minisat_lit minisat_get_act(struct minisat_solver *);
 bool minisat_solve(struct minisat_solver *, int, const minisat_lit *);
 
 minisat_lbool minisat_modelValue_Var(struct minisat_solver *, minisat_var);
