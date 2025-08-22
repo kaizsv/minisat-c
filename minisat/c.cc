@@ -83,4 +83,20 @@ bool minisat_add_clause3(struct minisat_solver *s, int l1, int l2, int l3)
     return s->add_clause(l1, l2, l3);
 }
 
+void minisat_release_act(struct minisat_solver *s)
+{
+    s->release_temorary();
+}
+
+void minisat_set_act(struct minisat_solver *s)
+{
+    Var act = s->newVar(fromC[minisat_l_True], false);
+    s->temporary_act = act << 1 | 1;
+}
+
+minisat_lit minisat_get_act(struct minisat_solver *s)
+{
+    return s->temporary_act;
+}
+
 }
