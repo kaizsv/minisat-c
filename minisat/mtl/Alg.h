@@ -48,10 +48,9 @@ static inline void remove(V& ts, const T& t)
 template<class V, class T>
 static inline bool find(V& ts, const T& t)
 {
-    const int size = (int) ts.size();
     int j = 0;
-    for (; j < size && ts[j] != t; j++);
-    return j < size;
+    for (; j < ts.size() && ts[j] != t; j++);
+    return j < ts.size();
 }
 
 
@@ -68,8 +67,7 @@ static inline void copy(const T& from, T& to)
 
 template<class T>
 static inline void append(const vec<T>& from, vec<T>& to) {
-    const int size = from.size();
-    for (int i = 0; i < size; ++i){
+    for (int i = 0; i < from.size(); ++i){
         to.push();
         copy(from[i], to.last());
     }

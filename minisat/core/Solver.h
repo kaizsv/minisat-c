@@ -46,6 +46,7 @@ public:
     //
     Var     newVar    (lbool upol = l_Undef, bool dvar = true); // Add a new variable with parameters specifying variable mode.
     void    releaseVar(Lit l);                                  // Make literal true and promise to never refer to variable again.
+    void    release_temorary();
 
     bool    addClause_(      vec<Lit>& ps);                     // Add a clause to the solver without making superflous internal copy. Will
                                                                 // change the passed vector 'ps'.
@@ -120,6 +121,7 @@ public:
     vec<lbool> model;             // If problem is satisfiable, this vector contains the model (if any).
     LSet       conflict;          // If problem is unsatisfiable (possibly under assumptions),
                                   // this vector represent the final conflict clause expressed in the assumptions.
+    int        temporary_act;
 
     // Mode of operation:
     //
@@ -183,6 +185,7 @@ protected:
     //
     vec<CRef>           clauses;          // List of problem clauses.
     vec<CRef>           learnts;          // List of learnt clauses.
+    vec<CRef>           temporary;        // List of temporary clauses.
     vec<Lit>            trail;            // Assignment stack; stores all assigments made in the order they were made.
     vec<int>            trail_lim;        // Separator indices for different decision levels in 'trail'.
     vec<Lit>            assumptions;      // Current set of assumptions provided to solve by the user.
@@ -239,7 +242,7 @@ protected:
     bool     enqueue          (Lit p, CRef from = CRef_Undef);                         // Test if fact 'p' contradicts current state, enqueue otherwise.
     CRef     propagate        ();                                                      // Perform unit propagation. Returns possibly conflicting clause.
     void     cancelUntil      (int level);                                             // Backtrack until a certain level.
-    void     analyze          (CRef confl, vec<Lit>& out_learnt, int& out_btlevel);    // (bt = backtrack)
+    void     analyze          (CRef, vec<Lit>&, int *, bool *);                        // (bt = backtrack)
     void     analyzeFinal     (Lit p, LSet& out_conflict);                             // COULD THIS BE IMPLEMENTED BY THE ORDINARIY "analyze" BY SOME REASONABLE GENERALIZATION?
     bool     litRedundant     (Lit p);                                                 // (helper method for 'analyze()')
     lbool    search           (int nof_conflicts);                                     // Search for a given number of conflicts.
@@ -315,11 +318,13 @@ inline void Solver::varBumpActivity(Var v, double inc) {
 
 inline void Solver::claDecayActivity() { cla_inc *= (1 / clause_decay); }
 inline void Solver::claBumpActivity (Clause& c) {
-        if ( (c.activity() += cla_inc) > 1e20 ) {
-            // Rescale:
-            for (int i = 0; i < learnts.size(); i++)
-                ca[learnts[i]].activity() *= 1e-20;
-            cla_inc *= 1e-20; } }
+    if ((c.activity() += cla_inc) > 1e20 ) {
+        // Rescale:
+        for (int i = 0; i < learnts.size(); i++)
+            ca[learnts[i]].activity() *= 1e-20;
+        cla_inc *= 1e-20;
+    }
+}
 
 inline void Solver::checkGarbage(void){ return checkGarbage(garbage_frac); }
 inline void Solver::checkGarbage(double gf){
@@ -409,8 +414,8 @@ inline bool     Solver::solve         (const vec<Lit>& assumps){ budgetOff(); as
 inline lbool    Solver::solveLimited  (int len, const int *lits) {
     assumptions.growTo(len);
     assumptions.setsz(len);
-    for (int i = 0; i < len; ++i)
-        (assumptions + i)->x = *lits++;
+    for (int i = 0; i < len; i++)
+        assumptions[i].x = *lits++;
     return solve_();
 }
 inline bool     Solver::okay          ()      const   { return ok; }

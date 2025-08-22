@@ -138,6 +138,37 @@ Var Solver::newVar(lbool upol, bool dvar)
     return v;
 }
 
+void Solver::release_temorary()
+{
+    int i;
+    for (i = 0; i < temporary.size(); i++) {
+        // FIXME: removeTempClause()
+        CRef cr = temporary[i];
+        Clause& c = ca[cr];
+        {
+            // FIXME: detachTempClause(strict = false)
+            assert(c.size() > 1);
+            watches.smudge(~c[0]);
+            watches.smudge(~c[1]);
+        }
+        if (locked(c))
+            vardata[var(c[0])].reason = CRef_Undef;
+        c.mark(1);
+        ca.free(cr);
+    }
+    temporary.clear();
+
+    if (assigns[temporary_act/2] != l_Undef) {
+        assigns[temporary_act/2] = l_Undef;
+
+        int j;
+        for (i = j = 0; i < trail.size(); i++)
+            if (trail[i].x != temporary_act)
+                trail[j++] = trail[i];
+        trail.shrink(i - j);
+        qhead = trail.size();
+    }
+}
 
 // Note: at the moment, only unassigned variable will be released (this is to avoid duplicate
 // releases of the same variable).
@@ -177,8 +208,19 @@ bool Solver::addClause_(vec<Lit>& ps)
         return ok = (propagate() == CRef_Undef);
     }else{
         CRef cr = ca.alloc(ps, false);
-        clauses.push(cr);
-        attachClause(cr);
+        if (ps.last().x == temporary_act) {
+            temporary.push(cr);
+            {
+                // FIXME: attachTempClause()
+                const Clause& c = ca[cr];
+                assert(c.size() > 1);
+                watches[~c[0]].push(Watcher(cr, c[1]));
+                watches[~c[1]].push(Watcher(cr, c[0]));
+            }
+        } else {
+            clauses.push(cr);
+            attachClause(cr);
+        }
     }
 
     return true;
@@ -245,8 +287,6 @@ void Solver::cancelUntil(int level) {
         qhead = lim;
         trail.shrink(trail.size() - lim);
         trail_lim.shrink(trail_lim.size() - level);
-        lim = trail_lim[level];
-        last = trail_lim.last();
     }
 }
 
@@ -296,7 +336,7 @@ Lit Solver::pickBranchLit()
 |        rest of literals. There may be others from the same level though.
 |  
 |________________________________________________________________________________________________@*/
-void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
+void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int *out_btlevel, bool *out_temp)
 {
     int pathC = 0;
     Lit p     = lit_Undef;
@@ -313,12 +353,12 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
         if (c.learnt())
             claBumpActivity(c);
 
-        const int csize = c.size();
-        for (int j = (p == lit_Undef) ? 0 : 1; j < csize; j++){
+        for (int j = (p == lit_Undef) ? 0 : 1; j < c.size(); j++) {
             Lit q = c[j];
 
             if (!seen[var(q)] && level(var(q)) > 0){
-                varBumpActivity(var(q));
+                if (q.x != temporary_act)
+                    varBumpActivity(var(q));
                 seen[var(q)] = 1;
                 if (level(var(q)) >= decisionLevel())
                     pathC++;
@@ -326,15 +366,15 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
                     out_learnt.push(q);
             }
         }
-        
+
         // Select next clause to look at:
-        while (!seen[var(trail[index--])]);
-        p     = trail[index+1];
+        while (!seen[var(trail[index])])
+            index -= 1;
+        p = trail[index];
         confl = reason(var(p));
         seen[var(p)] = 0;
         pathC--;
-
-    }while (pathC > 0);
+    } while (pathC > 0);
     out_learnt[0] = ~p;
 
     // Simplify conflict clause:
@@ -345,7 +385,6 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
         for (i = j = 1; i < out_learnt.size(); i++)
             if (reason(var(out_learnt[i])) == CRef_Undef || !litRedundant(out_learnt[i]))
                 out_learnt[j++] = out_learnt[i];
-        
     }else if (ccmin_mode == 1){
         for (i = j = 1; i < out_learnt.size(); i++){
             Var x = var(out_learnt[i]);
@@ -369,22 +408,27 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
 
     // Find correct backtrack level:
     //
-    if (out_learnt.size() == 1)
-        out_btlevel = 0;
-    else{
+    *out_temp = out_learnt[0].x == temporary_act;
+    if (out_learnt.size() == 1) {
+        *out_btlevel = 0;
+    } else {
+        *out_temp |= out_learnt[1].x == temporary_act;
         int max_i = 1;
         // Find the first literal assigned at the next-highest level:
-        for (int i = 2; i < out_learnt.size(); i++)
+        for (int i = 2; i < out_learnt.size(); i++) {
+            *out_temp |= out_learnt[i].x == temporary_act;
             if (level(var(out_learnt[i])) > level(var(out_learnt[max_i])))
                 max_i = i;
+        }
         // Swap-in this literal at index 1:
         Lit p             = out_learnt[max_i];
         out_learnt[max_i] = out_learnt[1];
         out_learnt[1]     = p;
-        out_btlevel       = level(var(p));
+        *out_btlevel      = level(var(p));
     }
 
-    for (int j = 0; j < analyze_toclear.size(); j++) seen[var(analyze_toclear[j])] = 0;    // ('seen[]' is now cleared)
+    for (int j = 0; j < analyze_toclear.size(); j++)
+        seen[var(analyze_toclear[j])] = 0;    // ('seen[]' is now cleared)
 }
 
 
@@ -541,8 +585,7 @@ CRef Solver::propagate()
                 *j++ = w; continue; }
 
             // Look for new watch:
-            const int csize = c.size();
-            for (int k = 2; k < csize; ++k)
+            for (int k = 2; k < c.size(); ++k)
                 if (value(c[k]) != l_False){
                     c[1] = c[k]; c[k] = false_lit;
                     watches[~c[1]].push(w);
@@ -586,7 +629,7 @@ struct reduceDB_lt {
 };
 void Solver::reduceDB()
 {
-    int     i, j;
+    int     i, j, lim = learnts.size() / 2;
     double  extra_lim = cla_inc / learnts.size();    // Remove any clause below this activity
 
     sort(learnts, reduceDB_lt(ca));
@@ -594,7 +637,7 @@ void Solver::reduceDB()
     // and clauses with activity smaller than 'extra_lim':
     for (i = j = 0; i < learnts.size(); i++){
         Clause& c = ca[learnts[i]];
-        if (c.size() > 2 && !locked(c) && (i < learnts.size() / 2 || c.activity() < extra_lim))
+        if (c.size() > 2 && !locked(c) && (i < lim || c.activity() < extra_lim))
             removeClause(learnts[i]);
         else
             learnts[j++] = learnts[i];
@@ -710,6 +753,7 @@ lbool Solver::search(int nof_conflicts)
     assert(ok);
     const int   assumptions_size = assumptions.size();
     int         backtrack_level;
+    bool        is_temp;
     int         conflictC = 0;
     vec<Lit>    learnt_clause;
     starts++;
@@ -722,16 +766,27 @@ lbool Solver::search(int nof_conflicts)
             if (decisionLevel() == 0) return l_False;
 
             learnt_clause.clear();
-            analyze(confl, learnt_clause, backtrack_level);
+            analyze(confl, learnt_clause, &backtrack_level, &is_temp);
             cancelUntil(backtrack_level);
 
             if (learnt_clause.size() == 1){
                 uncheckedEnqueue(learnt_clause[0]);
             }else{
-                CRef cr = ca.alloc(learnt_clause, true);
-                learnts.push(cr);
-                attachClause(cr);
-                claBumpActivity(ca[cr]);
+                CRef cr = ca.alloc(learnt_clause, !is_temp);
+                if (is_temp) {
+                    temporary.push(cr);
+                    {
+                        // FIXME: attachTempClause()
+                        const Clause& c = ca[cr];
+                        assert(c.size() > 1);
+                        watches[~c[0]].push(Watcher(cr, c[1]));
+                        watches[~c[1]].push(Watcher(cr, c[0]));
+                    }
+                } else {
+                    learnts.push(cr);
+                    attachClause(cr);
+                    claBumpActivity(ca[cr]);
+                }
                 uncheckedEnqueue(learnt_clause[0], cr);
             }
 
@@ -752,7 +807,7 @@ lbool Solver::search(int nof_conflicts)
 
         }else{
             // NO CONFLICT
-            if ((nof_conflicts >= 0 && conflictC >= nof_conflicts) || !withinBudget()){
+            if (conflictC >= nof_conflicts || !withinBudget()) {
                 // Reached bound on number of conflicts:
                 progress_estimate = progressEstimate();
                 cancelUntil(0);
@@ -762,7 +817,7 @@ lbool Solver::search(int nof_conflicts)
             if (decisionLevel() == 0 && !simplify())
                 return l_False;
 
-            if (learnts.size()-nAssigns() >= max_learnts)
+            if (learnts.size()-nAssigns() >= (int)max_learnts)
                 // Reduce the set of learnt clauses:
                 reduceDB();
 
@@ -1014,12 +1069,13 @@ void Solver::printStats() const
 
 void Solver::relocAll(ClauseAllocator& to)
 {
+    int i;
     // All watchers:
     //
     watches.cleanAll();
-    for (int v = 0; v < nVars(); v++)
+    for (i = 0; i < nVars(); i++)
         for (int s = 0; s < 2; s++){
-            Lit p = mkLit(v, s);
+            Lit p = mkLit(i, s);
             vec<Watcher>& ws = watches[p];
             for (int j = 0; j < ws.size(); j++)
                 ca.reloc(ws[j].cref, to);
@@ -1027,7 +1083,7 @@ void Solver::relocAll(ClauseAllocator& to)
 
     // All reasons:
     //
-    for (int i = 0; i < trail.size(); i++){
+    for (i = 0; i < trail.size(); i++){
         Var v = var(trail[i]);
 
         // Note: it is not safe to call 'locked()' on a relocated clause. This is why we keep
@@ -1040,7 +1096,7 @@ void Solver::relocAll(ClauseAllocator& to)
 
     // All learnt:
     //
-    int i, j;
+    int j;
     for (i = j = 0; i < learnts.size(); i++)
         if (!isRemoved(learnts[i])){
             ca.reloc(learnts[i], to);
@@ -1056,6 +1112,15 @@ void Solver::relocAll(ClauseAllocator& to)
             clauses[j++] = clauses[i];
         }
     clauses.shrink(i - j);
+
+    // All temporary:
+    //
+    for (i = j = 0; i < temporary.size(); i++)
+        if (!isRemoved(temporary[i])){
+            ca.reloc(temporary[i], to);
+            temporary[j++] = temporary[i];
+        }
+    temporary.shrink(i - j);
 }
 
 

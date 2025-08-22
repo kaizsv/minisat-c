@@ -169,8 +169,7 @@ class Clause {
         header           = from.header;
         header.has_extra = use_extra;   // NOTE: the copied clause may lose the extra field.
 
-        const int fromsize = from.size();
-        for (int i = 0; i < fromsize; i++)
+        for (int i = 0; i < from.size(); i++)
             data[i].lit = from[i];
 
         if (header.has_extra){
@@ -370,8 +369,7 @@ void OccLists<K,Vec,Deleted,MkIndex>::clean(const K& idx)
 {
     Vec& vec = occs[idx];
     int  i, j;
-    const int size = vec.size();
-    for (i = j = 0; i < size; ++i)
+    for (i = j = 0; i < vec.size(); ++i)
         if (!deleted(vec[i]))
             vec[j++] = vec[i];
     vec.shrink(i - j);
