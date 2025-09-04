@@ -40,7 +40,6 @@ class SimpSolver : public Solver {
     // Problem specification:
     //
     Var     newVar    (lbool upol = l_Undef, bool dvar = true);
-    void    releaseVar(Lit l);
     bool    addCube(int, const int *);
     bool    addEmptyClause();                // Add the empty clause to the solver.
     bool    addClause (Lit p);               // Add a unit clause to the solver.
@@ -133,7 +132,6 @@ class SimpSolver : public Solver {
     //
     int                 elimorder;
     bool                use_simplification;
-    Var                 max_simp_var;        // Max variable at the point simplification was turned off.
     vec<uint32_t>       elimclauses;
     VMap<char>          touched;
     OccLists<Var, vec<CRef>, ClauseDeleted>
