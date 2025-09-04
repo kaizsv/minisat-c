@@ -1,8 +1,8 @@
-#include "minisat/core/Solver.h"
+#include "minisat/simp/SimpSolver.h"
 
 using namespace Minisat;
 
-struct minisat_solver: public Solver {};
+struct minisat_solver: public SimpSolver {};
 
 extern "C" {
 
@@ -19,6 +19,10 @@ struct minisat_solver* minisat_new()
 {
     struct minisat_solver *s = new minisat_solver();
     s->budgetOff();
+    s->subsumption_lim = -1;
+    s->use_rcheck = false;
+    s->use_elim = false;
+    s->use_asymm = false;
     return s;
 }
 
@@ -60,7 +64,7 @@ int minisat_conflict_len(struct minisat_solver *s)
 
 bool minisat_solve(struct minisat_solver *s, int len, const minisat_lit *ps)
 {
-    return s->solveLimited(len, ps) == l_True;
+    return s->Solver::solveLimited(len, ps) == l_True;
 }
 
 bool minisat_add_clause(struct minisat_solver *s, int len, const minisat_lit *ps)
@@ -97,6 +101,16 @@ void minisat_set_act(struct minisat_solver *s)
 minisat_lit minisat_get_act(struct minisat_solver *s)
 {
     return s->temporary_act;
+}
+
+bool minisat_simp_cube(struct minisat_solver *s, int len, const minisat_lit *ps)
+{
+    return s->SimpSolver::addCube(len, ps);
+}
+
+bool minisat_eliminate(struct minisat_solver *s)
+{
+    return s->eliminate(false);
 }
 
 }

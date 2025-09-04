@@ -337,10 +337,9 @@ inline bool     Solver::enqueue         (Lit p, CRef from)      { return value(p
 inline bool Solver::add_clause(int len, const int *lits) {
     add_tmp.growTo(len);
     add_tmp.setsz(len);
-    Lit *tmp = (Lit *) add_tmp;
-    const int *end = lits + len;
-    while (lits < end)
-        (tmp++)->x = *lits++;
+    int i;
+    for (i = 0; i < len; i++)
+        add_tmp[i].x = *lits++;
     return addClause_(add_tmp);
 }
 

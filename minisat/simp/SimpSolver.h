@@ -41,7 +41,7 @@ class SimpSolver : public Solver {
     //
     Var     newVar    (lbool upol = l_Undef, bool dvar = true);
     void    releaseVar(Lit l);
-    bool    addClause (const vec<Lit>& ps);
+    bool    addCube(int, const int *);
     bool    addEmptyClause();                // Add the empty clause to the solver.
     bool    addClause (Lit p);               // Add a unit clause to the solver.
     bool    addClause (Lit p, Lit q);        // Add a binary clause to the solver.
@@ -183,7 +183,14 @@ inline void SimpSolver::updateElimHeap(Var v) {
         elim_heap.update(v); }
 
 
-inline bool SimpSolver::addClause    (const vec<Lit>& ps)    { ps.copyTo(add_tmp); return addClause_(add_tmp); }
+inline bool SimpSolver::addCube(int len, const int *lits) {
+    add_tmp.growTo(len);
+    add_tmp.setsz(len);
+    int i;
+    for (i = 0; i < len; i++)
+        add_tmp[i].x = *lits++ ^ 1;
+    return addClause_(add_tmp);
+}
 inline bool SimpSolver::addEmptyClause()                     { add_tmp.clear(); return addClause_(add_tmp); }
 inline bool SimpSolver::addClause    (Lit p)                 { add_tmp.clear(); add_tmp.push(p); return addClause_(add_tmp); }
 inline bool SimpSolver::addClause    (Lit p, Lit q)          { add_tmp.clear(); add_tmp.push(p); add_tmp.push(q); return addClause_(add_tmp); }

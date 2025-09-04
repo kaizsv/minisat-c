@@ -85,7 +85,8 @@ Var SimpSolver::newVar(lbool upol, bool dvar) {
         n_occ     .insert(~mkLit(v), 0);
         occurs    .init  (v);
         touched   .insert(v, 0);
-        elim_heap .insert(v);
+        if (use_asymm || use_elim)
+            elim_heap.insert(v);
     }
     return v; }
 
@@ -296,8 +297,8 @@ void SimpSolver::gatherTouchedClauses()
 {
     if (n_touched == 0) return;
 
-    int i,j;
-    for (i = j = 0; i < subsumption_queue.size(); i++)
+    int i, j;
+    for (i = 0; i < subsumption_queue.size(); i++)
         if (ca[subsumption_queue[i]].mark() == 0)
             ca[subsumption_queue[i]].mark(2);
 
@@ -369,7 +370,8 @@ bool SimpSolver::backwardSubsumptionCheck(bool verbose)
         if (c.mark()) continue;
 
         if (verbose && verbosity >= 2 && cnt++ % 1000 == 0)
-            printf("subsumption left: %10d (%10d subsumed, %10d deleted literals)\r", subsumption_queue.size(), subsumed, deleted_literals);
+            printf("subsumption left: %10d (%10d subsumed, %10d deleted literals)\r",
+                    subsumption_queue.size(), subsumed, deleted_literals);
 
         assert(c.size() > 1 || value(c[0]) == l_True);    // Unit-clauses should have been propagated before this point.
 
@@ -609,7 +611,7 @@ bool SimpSolver::eliminate(bool turn_off_elim)
         gatherTouchedClauses();
         // printf("  ## (time = %6.2f s) BWD-SUB: queue = %d, trail = %d\n", cpuTime(), subsumption_queue.size(), trail.size() - bwdsub_assigns);
         if ((subsumption_queue.size() > 0 || bwdsub_assigns < trail.size()) && 
-            !backwardSubsumptionCheck(true)){
+            !backwardSubsumptionCheck()){
             ok = false; goto cleanup; }
 
         // Empty elim_heap and return immediately on user-interrupt:

@@ -31,4 +31,7 @@ minisat_lbool minisat_modelValue_Var(struct minisat_solver *, minisat_var);
 minisat_lit minisat_conflict_nthLit(struct minisat_solver *, int);
 int minisat_conflict_len(struct minisat_solver *);
 
+bool minisat_simp_cube(struct minisat_solver *, int, const minisat_lit *);
+bool minisat_eliminate(struct minisat_solver *);
+
 #endif
