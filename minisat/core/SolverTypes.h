@@ -76,8 +76,6 @@ extern const Lit lit_Error;
 
 struct MkIndexLit { vec<Lit>::Size operator()(Lit l) const { return vec<Lit>::Size(l.x); } };
 
-template<class T> class VMap : public IntMap<Var, T>{};
-template<class T> class LMap : public IntMap<Lit, T, MkIndexLit>{};
 class LSet : public IntSet<Lit, MkIndexLit>{};
 
 //=================================================================================================

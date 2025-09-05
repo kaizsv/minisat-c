@@ -121,15 +121,20 @@ Var Solver::newVar(lbool upol, bool dvar)
 
     watches  .init(mkLit(v, false));
     watches  .init(mkLit(v, true ));
-    assigns  .insert(v, l_Undef);
-    vardata  .insert(v, mkVarData(CRef_Undef, 0));
-    activity .insert(v, 0);
-    seen     .insert(v, 0);
-    polarity .insert(v, true);
-    user_pol .insert(v, upol);
-    decision .reserve(v);
+    assigns  .push(l_Undef);
+    vardata  .push(mkVarData(CRef_Undef, 0));
+    activity .push(0);
+    seen     .push(0);
+    polarity .push((char)true);
+    user_pol .push(upol);
+    decision .push((char)dvar);
     trail    .capacity(v+1);
-    setDecisionVar(v, dvar);
+    { // FIXME setDecisionVar()
+        if (dvar) {
+            dec_vars += 1;
+            insertVarOrder(v);
+        }
+    }
     return v;
 }
 

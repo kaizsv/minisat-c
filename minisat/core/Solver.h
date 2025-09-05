@@ -24,7 +24,6 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "minisat/mtl/Vec.h"
 #include "minisat/mtl/Heap.h"
 #include "minisat/mtl/Alg.h"
-#include "minisat/mtl/IntMap.h"
 #include "minisat/utils/Options.h"
 #include "minisat/core/SolverTypes.h"
 
@@ -169,9 +168,9 @@ protected:
     };
 
     struct VarOrderLt {
-        const IntMap<Var, double>&  activity;
+        const vec<double>&  activity;
         bool operator () (Var x, Var y) const { return activity[x] > activity[y]; }
-        VarOrderLt(const IntMap<Var, double>&  act) : activity(act) { }
+        VarOrderLt(const vec<double>&  act) : activity(act) { }
     };
 
     struct ShrinkStackElem {
@@ -189,12 +188,12 @@ protected:
     vec<int>            trail_lim;        // Separator indices for different decision levels in 'trail'.
     vec<Lit>            assumptions;      // Current set of assumptions provided to solve by the user.
 
-    VMap<double>        activity;         // A heuristic measurement of the activity of a variable.
-    VMap<lbool>         assigns;          // The current assignments.
-    VMap<char>          polarity;         // The preferred polarity of each variable.
-    VMap<lbool>         user_pol;         // The users preferred polarity of each variable.
-    VMap<char>          decision;         // Declares if a variable is eligible for selection in the decision heuristic.
-    VMap<VarData>       vardata;          // Stores reason and level for each variable.
+    vec<double>         activity;         // A heuristic measurement of the activity of a variable.
+    vec<lbool>          assigns;          // The current assignments.
+    vec<char>           polarity;         // The preferred polarity of each variable.
+    vec<lbool>          user_pol;         // The users preferred polarity of each variable.
+    vec<char>           decision;         // Declares if a variable is eligible for selection in the decision heuristic.
+    vec<VarData>        vardata;          // Stores reason and level for each variable.
     OccLists<Lit, vec<Watcher>, WatcherDeleted, MkIndexLit>
                         watches;          // 'watches[lit]' is a list of constraints watching 'lit' (will go there if literal becomes true).
 
@@ -214,7 +213,7 @@ protected:
     // Temporaries (to reduce allocation overhead). Each variable is prefixed by the method in which it is
     // used, exept 'seen' wich is used in several places.
     //
-    VMap<char>          seen;
+    vec<char>           seen;
     vec<ShrinkStackElem>analyze_stack;
     vec<Lit>            analyze_toclear;
     vec<Lit>            add_tmp;
@@ -385,7 +384,7 @@ inline void     Solver::setDecisionVar(Var v, bool b)
     if      ( b && !decision[v]) dec_vars++;
     else if (!b &&  decision[v]) dec_vars--;
 
-    decision[v] = b;
+    decision[v] = (char)b;
     insertVarOrder(v);
 }
 inline void     Solver::setConfBudget(int64_t x){ conflict_budget    = conflicts    + x; }

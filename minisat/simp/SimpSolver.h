@@ -108,12 +108,12 @@ class SimpSolver : public Solver {
     // Helper structures:
     //
     struct ElimLt {
-        const LMap<int>& n_occ;
-        explicit ElimLt(const LMap<int>& no) : n_occ(no) {}
+        const vec<int>& n_occ;
+        explicit ElimLt(const vec<int>& no) : n_occ(no) {}
 
         // TODO: are 64-bit operations here noticably bad on 32-bit platforms? Could use a saturating
         // 32-bit implementation instead then, but this will have to do for now.
-        uint64_t cost  (Var x)        const { return (uint64_t)n_occ[mkLit(x)] * (uint64_t)n_occ[~mkLit(x)]; }
+        uint64_t cost  (Var x)        const { return (uint64_t)n_occ[toInt(mkLit(x))] * (uint64_t)n_occ[toInt(~mkLit(x))]; }
         bool operator()(Var x, Var y) const { return cost(x) < cost(y); }
         
         // TODO: investigate this order alternative more.
@@ -133,15 +133,15 @@ class SimpSolver : public Solver {
     int                 elimorder;
     bool                use_simplification;
     vec<uint32_t>       elimclauses;
-    VMap<char>          touched;
+    vec<char>           touched;
     OccLists<Var, vec<CRef>, ClauseDeleted>
                         occurs;
-    LMap<int>           n_occ;
+    vec<int>            n_occ;
     Heap<Var,ElimLt>    elim_heap;
     Queue<CRef>         subsumption_queue;
-    VMap<char>          frozen;
+    vec<char>           frozen;
     vec<Var>            frozen_vars;
-    VMap<char>          eliminated;
+    vec<char>           eliminated;
     int                 bwdsub_assigns;
     int                 n_touched;
 

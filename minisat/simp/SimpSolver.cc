@@ -77,14 +77,14 @@ SimpSolver::~SimpSolver()
 Var SimpSolver::newVar(lbool upol, bool dvar) {
     Var v = Solver::newVar(upol, dvar);
 
-    frozen    .insert(v, (char)false);
-    eliminated.insert(v, (char)false);
+    frozen    .push((char)false);
+    eliminated.push((char)false);
 
     if (use_simplification){
-        n_occ     .insert( mkLit(v), 0);
-        n_occ     .insert(~mkLit(v), 0);
-        occurs    .init  (v);
-        touched   .insert(v, 0);
+        n_occ     .push(0);
+        n_occ     .push(0);
+        occurs    .init(v);
+        touched   .push(0);
         if (use_asymm || use_elim)
             elim_heap.insert(v);
     }
@@ -163,7 +163,7 @@ bool SimpSolver::addClause_(vec<Lit>& ps)
         subsumption_queue.insert(cr);
         for (int i = 0; i < c.size(); i++){
             occurs[var(c[i])].push(cr);
-            n_occ[c[i]]++;
+            n_occ[toInt(c[i])]++;
             touched[var(c[i])] = 1;
             n_touched++;
             if (elim_heap.inHeap(var(c[i])))
@@ -181,7 +181,7 @@ void SimpSolver::removeClause(CRef cr)
 
     if (use_simplification)
         for (int i = 0; i < c.size(); i++){
-            n_occ[c[i]]--;
+            n_occ[toInt(c[i])]--;
             updateElimHeap(var(c[i]));
             occurs.smudge(var(c[i]));
         }
@@ -208,7 +208,7 @@ bool SimpSolver::strengthenClause(CRef cr, Lit l)
         c.strengthen(l);
         attachClause(cr);
         remove(occurs[var(l)], cr);
-        n_occ[l]--;
+        n_occ[toInt(l)]--;
         updateElimHeap(var(l));
     }
 
