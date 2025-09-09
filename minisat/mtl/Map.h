@@ -162,9 +162,9 @@ class Map {
     void remove(const K& k) {
         assert(table != NULL);
         vec<Pair>& ps = table[index(k)];
-        int j = 0, pssize = ps.size();
-        for (; j < pssize && !equals(ps[j].key, k); j++);
-        assert(j < pssize);
+        int j = 0;
+        for (; j < ps.size() && !equals(ps[j].key, k); j++);
+        assert(j < ps.size());
         ps[j] = ps.last();
         ps.pop();
         size--;

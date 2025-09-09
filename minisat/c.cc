@@ -103,6 +103,11 @@ minisat_lit minisat_get_act(struct minisat_solver *s)
     return s->temporary_act;
 }
 
+void minisat_set_frozen(struct minisat_solver *s, minisat_var v, bool b)
+{
+    s->setFrozen(v, b);
+}
+
 bool minisat_simp_cube(struct minisat_solver *s, int len, const minisat_lit *ps)
 {
     return s->SimpSolver::addCube(len, ps);
