@@ -379,13 +379,20 @@ inline int      Solver::nVars         ()      const   { return next_var; }
 // TODO: nFreeVars() is not quite correct, try to calculate right instead of adapting it like below:
 inline int      Solver::nFreeVars     ()      const   { return (int)dec_vars - (trail_lim.size() == 0 ? trail.size() : trail_lim[0]); }
 inline void     Solver::setPolarity   (Var v, lbool b){ user_pol[v] = b; }
-inline void     Solver::setDecisionVar(Var v, bool b) 
-{ 
-    if      ( b && !decision[v]) dec_vars++;
-    else if (!b &&  decision[v]) dec_vars--;
-
-    decision[v] = (char)b;
-    insertVarOrder(v);
+inline void     Solver::setDecisionVar(Var v, bool b)
+{
+    if (b) {
+        if (!decision[v]) {
+            decision[v] = 1;
+            dec_vars += 1;
+            insertVarOrder(v);
+        }
+    } else {
+        if (decision[v]) {
+            decision[v] = 0;
+            dec_vars -= 1;
+        }
+    }
 }
 inline void     Solver::setConfBudget(int64_t x){ conflict_budget    = conflicts    + x; }
 inline void     Solver::setPropBudget(int64_t x){ propagation_budget = propagations + x; }

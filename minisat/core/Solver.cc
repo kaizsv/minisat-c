@@ -127,14 +127,9 @@ Var Solver::newVar(lbool upol, bool dvar)
     seen     .push(0);
     polarity .push((char)true);
     user_pol .push(upol);
-    decision .push((char)dvar);
+    decision .push(0);
     trail    .capacity(v+1);
-    { // FIXME setDecisionVar()
-        if (dvar) {
-            dec_vars += 1;
-            insertVarOrder(v);
-        }
-    }
+    setDecisionVar(v, dvar);
     return v;
 }
 
