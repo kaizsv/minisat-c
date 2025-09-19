@@ -59,6 +59,7 @@ SimpSolver::SimpSolver() :
   , use_simplification (true)
   , occurs             (ClauseDeleted(ca))
   , elim_heap          (ElimLt(n_occ))
+  , subsumption_queue  (SubLt(ca))
   , bwdsub_assigns     (0)
   , n_touched          (0)
 {
@@ -160,7 +161,7 @@ bool SimpSolver::addClause_(vec<Lit>& ps)
         // be checked twice unnecessarily. This is an unfortunate
         // consequence of how backward subsumption is used to mimic
         // forward subsumption.
-        subsumption_queue.insert(cr);
+        subsumption_queue.update(cr);
         for (int i = 0; i < c.size(); i++){
             occurs[var(c[i])].push(cr);
             n_occ[toInt(c[i])]++;
@@ -196,23 +197,26 @@ bool SimpSolver::strengthenClause(CRef cr, Lit l)
     assert(decisionLevel() == 0);
     assert(use_simplification);
 
-    // FIX: this is too inefficient but would be nice to have (properly implemented)
-    // if (!find(subsumption_queue, &c))
-    subsumption_queue.insert(cr);
-
     if (c.size() == 2){
         removeClause(cr);
         c.strengthen(l);
+
+        enqueue(c[0]);
+        return CRef_Undef == propagate();
     }else{
+        // FIX: this is too inefficient but would be nice to have (properly implemented)
+        // if (!find(subsumption_queue, &c))
+        subsumption_queue.update(cr);
+
         detachClause(cr, true);
         c.strengthen(l);
         attachClause(cr);
         remove(occurs[var(l)], cr);
         n_occ[toInt(l)]--;
         updateElimHeap(var(l));
-    }
 
-    return c.size() == 1 ? enqueue(c[0]) && propagate() == CRef_Undef : true;
+        return true;
+    }
 }
 
 
@@ -284,24 +288,16 @@ void SimpSolver::gatherTouchedClauses()
     if (n_touched == 0) return;
 
     int i, j;
-    for (i = 0; i < subsumption_queue.size(); i++)
-        if (ca[subsumption_queue[i]].mark() == 0)
-            ca[subsumption_queue[i]].mark(2);
-
-    for (i = 0; i < nVars(); i++)
-        if (touched[i]){
+    for (i = 0; i < nVars(); i++) {
+        if (touched[i]) {
             const vec<CRef>& cs = occurs.lookup(i);
-            for (j = 0; j < cs.size(); j++)
-                if (ca[cs[j]].mark() == 0){
+            for (j = 0; j < cs.size(); j++) {
+                if (ca[cs[j]].mark() == 0 && !subsumption_queue.inHeap(cs[j]))
                     subsumption_queue.insert(cs[j]);
-                    ca[cs[j]].mark(2);
-                }
+            }
             touched[i] = 0;
         }
-
-    for (i = 0; i < subsumption_queue.size(); i++)
-        if (ca[subsumption_queue[i]].mark() == 2)
-            ca[subsumption_queue[i]].mark(0);
+    }
 
     n_touched = 0;
 }
@@ -348,9 +344,9 @@ bool SimpSolver::backwardSubsumptionCheck(bool verbose)
             Lit l = trail[bwdsub_assigns++];
             ca[bwdsub_tmpunit][0] = l;
             ca[bwdsub_tmpunit].calcAbstraction();
-            subsumption_queue.insert(bwdsub_tmpunit); }
+            subsumption_queue.update(bwdsub_tmpunit); }
 
-        CRef    cr = subsumption_queue.peek(); subsumption_queue.pop();
+        CRef    cr = subsumption_queue.removeMin();
         Clause& c  = ca[cr];
 
         if (c.mark()) continue;
@@ -371,10 +367,9 @@ bool SimpSolver::backwardSubsumptionCheck(bool verbose)
         vec<CRef>& _cs = occurs.lookup(best);
         CRef*       cs = (CRef*)_cs;
 
-        for (int j = 0; j < _cs.size(); j++)
-            if (c.mark())
-                break;
-            else if (!ca[cs[j]].mark() &&  cs[j] != cr && (subsumption_lim == -1 || ca[cs[j]].size() < subsumption_lim)){
+        for (int j = 0; j < _cs.size() && !c.mark(); j++)
+            if (!ca[cs[j]].mark() && cs[j] != cr
+                    && (subsumption_lim == -1 || ca[cs[j]].size() < subsumption_lim)){
                 Lit l = c.subsumes(ca[cs[j]]);
 
                 if (l == lit_Undef)
@@ -686,13 +681,15 @@ void SimpSolver::relocAll(ClauseAllocator& to)
 
     // Subsumption queue:
     //
-    for (int i = subsumption_queue.size(); i > 0; i--){
-        CRef cr = subsumption_queue.peek(); subsumption_queue.pop();
+    vec<CRef> tmp;
+    while (subsumption_queue.size() > 0) {
+        CRef cr = subsumption_queue.removeMin();
         if (ca[cr].mark()) continue;
         ca.reloc(cr, to);
-        subsumption_queue.insert(cr);
+        tmp.push(cr);
     }
-        
+    subsumption_queue.build(tmp);
+
     // Temporary clause:
     //
     ca.reloc(bwdsub_tmpunit, to);

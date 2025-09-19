@@ -21,7 +21,6 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #ifndef Minisat_SimpSolver_h
 #define Minisat_SimpSolver_h
 
-#include "minisat/mtl/Queue.h"
 #include "minisat/core/Solver.h"
 
 
@@ -123,6 +122,12 @@ class SimpSolver : public Solver {
         //     return c_x < c_y || c_x == c_y && x < y; }
     };
 
+    struct SubLt {
+        const ClauseAllocator& ca;
+        explicit SubLt(const ClauseAllocator& _ca) : ca(_ca) {}
+        bool operator()(CRef x, CRef y) const { return ca[x].size() < ca[y].size(); }
+    };
+
     struct ClauseDeleted {
         const ClauseAllocator& ca;
         explicit ClauseDeleted(const ClauseAllocator& _ca) : ca(_ca) {}
@@ -138,7 +143,7 @@ class SimpSolver : public Solver {
                         occurs;
     vec<int>            n_occ;
     Heap<Var,ElimLt>    elim_heap;
-    Queue<CRef>         subsumption_queue;
+    Heap<CRef,SubLt>    subsumption_queue;
     vec<char>           frozen;
     vec<char>           eliminated;
     int                 bwdsub_assigns;

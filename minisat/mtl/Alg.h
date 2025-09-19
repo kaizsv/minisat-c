@@ -35,12 +35,12 @@ namespace Minisat {
 template<class V, class T>
 static inline void remove(V& ts, const T& t)
 {
-    int size = (int) ts.size();
-    int j = 0;
-    for (; j < size && ts[j] != t; j++);
-    assert(j < size);
-    size -= 1;
-    for (; j < size; j++) ts[j] = ts[j+1];
+    int i = 0;
+    while (i < ts.size() && ts[i] != t)
+        i += 1;
+    int j = i + 1;
+    while (j < ts.size())
+        ts[i++] = ts[j++];
     ts.pop();
 }
 
