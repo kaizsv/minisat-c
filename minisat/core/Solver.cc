@@ -128,6 +128,7 @@ Var Solver::newVar(lbool upol, bool dvar)
     polarity .push((char)true);
     user_pol .push(upol);
     decision .push(0);
+    var_domain.push(0);
     trail    .capacity(v+1);
     setDecisionVar(v, dvar);
     return v;
@@ -596,6 +597,66 @@ CRef Solver::propagate()
     return confl;
 }
 
+CRef Solver::propagate_domain()
+{
+    CRef    confl     = CRef_Undef;
+    int     num_props = 0;
+
+    while (qhead < trail.size()){
+        Lit            p   = trail[qhead++];     // 'p' is enqueued fact to propagate.
+        Lit    false_lit   = ~p;
+        vec<Watcher>&  ws  = watches.lookup(p);
+        num_props++;
+
+        Watcher *i = (Watcher *) ws, *j = i;
+        const Watcher *end = i + ws.size();
+        while (i < end) {
+            // Try to avoid inspecting the clause:
+            Lit blocker = i->blocker;
+            if (var_domain[var(blocker)] == 0 || value(blocker) == l_True){
+                *j++ = *i++; continue; }
+
+            // Make sure the false literal is data[1]:
+            CRef     cr        = i->cref;
+            Clause&  c         = ca[cr];
+            if (c[0] == false_lit)
+                c[0] = c[1], c[1] = false_lit;
+            assert(c[1] == false_lit);
+            i++;
+
+            // If 0th watch is true, then clause is already satisfied.
+            Lit     first = c[0];
+            Watcher w     = Watcher(cr, first);
+            if (first != blocker && (var_domain[var(first)] == 0 || value(first) == l_True)){
+                *j++ = w; continue; }
+
+            // Look for new watch:
+            for (int k = 2; k < c.size(); ++k)
+                if (value(c[k]) != l_False){
+                    c[1] = c[k]; c[k] = false_lit;
+                    watches[~c[1]].push(w);
+                    goto NextClause; }
+
+            // Did not find watch -- clause is unit under assignment:
+            *j++ = w;
+            if (value(first) == l_False){
+                confl = cr;
+                qhead = trail.size();
+                // Copy the remaining watches:
+                while (i < end)
+                    *j++ = *i++;
+            }else
+                uncheckedEnqueue(first, cr);
+
+        NextClause:;
+        }
+        ws.shrink(i - j);
+    }
+    propagations += num_props;
+    simpDB_props -= num_props;
+
+    return confl;
+}
 
 /*_________________________________________________________________________________________________
 |
@@ -655,11 +716,12 @@ void Solver::removeSatisfied(vec<CRef>& cs)
 
 void Solver::rebuildOrderHeap()
 {
-    vec<Var> vs;
-    for (Var v = 0; v < nVars(); v++)
-        if (decision[v] && value(v) == l_Undef)
-            vs.push(v);
-    order_heap.build(vs);
+    while (top_assigns < trail.size()) {
+        Var v = var(trail[top_assigns++]);
+        setDecisionVar(v, false);
+        if (order_heap.inHeap(v))
+            order_heap.remove(v);
+    }
 }
 
 
@@ -687,7 +749,6 @@ bool Solver::simplify()
         removeSatisfied(clauses);
     }
     checkGarbage();
-    rebuildOrderHeap();
 
     simpDB_assigns = nAssigns();
     simpDB_props   = clauses_literals + learnts_literals;   // (shouldn't depend on stats really, but it will do for now)
@@ -719,12 +780,15 @@ lbool Solver::search(int nof_conflicts)
     vec<Lit>    learnt_clause;
     starts++;
 
+    CRef confl = propagate();
     for (;;){
-        CRef confl = propagate();
         if (confl != CRef_Undef){
             // CONFLICT
             conflicts++; conflictC++;
-            if (decisionLevel() == 0) return l_False;
+            if (decisionLevel() == 0) {
+                rebuildOrderHeap();
+                return l_False;
+            }
 
             learnt_clause.clear();
             analyze(confl, learnt_clause, &backtrack_level, &is_temp);
@@ -732,6 +796,14 @@ lbool Solver::search(int nof_conflicts)
 
             if (learnt_clause.size() == 1){
                 uncheckedEnqueue(learnt_clause[0]);
+                rebuildOrderHeap();
+
+                varDecayActivity();
+                claDecayActivity();
+                // FIXME Adjust learnts size
+
+                confl = propagate();
+                continue;
             }else{
                 CRef cr = ca.alloc(learnt_clause, !is_temp);
                 if (is_temp) {
@@ -749,10 +821,10 @@ lbool Solver::search(int nof_conflicts)
                     claBumpActivity(ca[cr]);
                 }
                 uncheckedEnqueue(learnt_clause[0], cr);
-            }
 
-            varDecayActivity();
-            claDecayActivity();
+                varDecayActivity();
+                claDecayActivity();
+            }
 
             if (--learntsize_adjust_cnt == 0){
                 learntsize_adjust_confl *= learntsize_adjust_inc;
@@ -775,8 +847,11 @@ lbool Solver::search(int nof_conflicts)
                 return l_Undef; }
 
             // Simplify the set of problem clauses:
-            if (decisionLevel() == 0 && !simplify())
-                return l_False;
+            if (decisionLevel() == 0) {
+                rebuildOrderHeap();
+                if (!simplify())
+                    return l_False;
+            }
 
             if (learnts.size()-nAssigns() >= (int)max_learnts)
                 // Reduce the set of learnt clauses:
@@ -812,6 +887,7 @@ lbool Solver::search(int nof_conflicts)
             newDecisionLevel();
             uncheckedEnqueue(next);
         }
+        confl = propagate_domain();
     }
 }
 
@@ -883,6 +959,7 @@ lbool Solver::solve_()
     }
 
     // Search:
+    top_assigns = trail.size();
     int curr_restarts = 0;
     while (status == l_Undef){
         double rest_base = luby_restart ? luby(restart_inc, curr_restarts) : pow(restart_inc, curr_restarts);

@@ -19,7 +19,6 @@ struct minisat_solver* minisat_new()
 {
     struct minisat_solver *s = new minisat_solver();
     s->budgetOff();
-    s->subsumption_lim = -1;
     s->use_rcheck = false;
     s->use_elim = false;
     s->use_asymm = false;
@@ -39,6 +38,11 @@ bool minisat_okay(struct minisat_solver *s)
 void minisat_setDecisionVar(struct minisat_solver *s, minisat_var v, bool b)
 {
     s->setDecisionVar(v, b);
+}
+
+void minisat_clear_all_decision(struct minisat_solver *s)
+{
+    s->clearAllDecision();
 }
 
 minisat_var minisat_new_var(struct minisat_solver *s,
@@ -116,6 +120,16 @@ bool minisat_simp_cube(struct minisat_solver *s, int len, const minisat_lit *ps)
 bool minisat_eliminate(struct minisat_solver *s)
 {
     return s->eliminate(false);
+}
+
+bool minisat_var_domain(struct minisat_solver *s, minisat_var v)
+{
+    return s->var_domain[v];
+}
+
+void minisat_set_var_domain(struct minisat_solver *s, minisat_var v, bool b)
+{
+    s->var_domain[v] = (char) b;
 }
 
 }

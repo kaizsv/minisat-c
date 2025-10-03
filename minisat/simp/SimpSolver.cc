@@ -35,7 +35,6 @@ static BoolOption   opt_use_rcheck       (_cat, "rcheck",       "Check if a clau
 static BoolOption   opt_use_elim         (_cat, "elim",         "Perform variable elimination.", true);
 static IntOption    opt_grow             (_cat, "grow",         "Allow a variable elimination step to grow by a number of clauses.", 0);
 static IntOption    opt_clause_lim       (_cat, "cl-lim",       "Variables are not eliminated if it produces a resolvent with a length above this limit. -1 means no limit", 20,   IntRange(-1, INT32_MAX));
-static IntOption    opt_subsumption_lim  (_cat, "sub-lim",      "Do not check if subsumption against a clause larger than this. -1 means no limit.", 1000, IntRange(-1, INT32_MAX));
 static DoubleOption opt_simp_garbage_frac(_cat, "simp-gc-frac", "The fraction of wasted memory allowed before a garbage collection is triggered during simplification.",  0.5, DoubleRange(0, false, HUGE_VAL, false));
 
 
@@ -46,7 +45,6 @@ static DoubleOption opt_simp_garbage_frac(_cat, "simp-gc-frac", "The fraction of
 SimpSolver::SimpSolver() :
     grow               (opt_grow)
   , clause_lim         (opt_clause_lim)
-  , subsumption_lim    (opt_subsumption_lim)
   , simp_garbage_frac  (opt_simp_garbage_frac)
   , use_asymm          (opt_use_asymm)
   , use_rcheck         (opt_use_rcheck)
@@ -60,7 +58,6 @@ SimpSolver::SimpSolver() :
   , occurs             (ClauseDeleted(ca))
   , elim_heap          (ElimLt(n_occ))
   , subsumption_queue  (SubLt(ca))
-  , bwdsub_assigns     (0)
   , n_touched          (0)
 {
     vec<Lit> dummy(1,lit_Undef);
@@ -322,72 +319,84 @@ bool SimpSolver::implied(const vec<Lit>& c)
     return result;
 }
 
-
-// Backward subsumption + backward subsumption resolution
-bool SimpSolver::backwardSubsumptionCheck(bool verbose)
+bool SimpSolver::backwardSubsumption(CRef cr)
 {
-    int cnt = 0;
-    int subsumed = 0;
-    int deleted_literals = 0;
-    assert(decisionLevel() == 0);
+    Clause& c  = ca[cr];
+    if (c.mark())
+        return true;
 
-    while (subsumption_queue.size() > 0 || bwdsub_assigns < trail.size()){
+    // Unit-clauses should have been propagated before this point.
+    assert(c.size() > 1 || value(c[0]) == l_True);
 
-        // Empty subsumption queue and return immediately on user-interrupt:
-        if (asynch_interrupt){
-            subsumption_queue.clear();
-            bwdsub_assigns = trail.size();
-            break; }
+    // Find best variable to scan:
+    Var best = var(c[0]);
+    for (int i = 1; i < c.size(); i++)
+        if (occurs[var(c[i])].size() < occurs[best].size())
+            best = var(c[i]);
 
-        // Check top-level assignments by creating a dummy clause and placing it in the queue:
-        if (subsumption_queue.size() == 0 && bwdsub_assigns < trail.size()){
-            Lit l = trail[bwdsub_assigns++];
-            ca[bwdsub_tmpunit][0] = l;
-            ca[bwdsub_tmpunit].calcAbstraction();
-            subsumption_queue.update(bwdsub_tmpunit); }
+    // Search all candidates:
+    vec<CRef>& _cs = occurs.lookup(best);
+    CRef*       cs = (CRef*)_cs;
 
-        CRef    cr = subsumption_queue.removeMin();
-        Clause& c  = ca[cr];
+    for (int j = 0; j < _cs.size(); j++) {
+        if (!ca[cs[j]].mark() && cs[j] != cr) {
+            Lit l = c.subsumes(ca[cs[j]]);
 
-        if (c.mark()) continue;
-
-        if (verbose && verbosity >= 2 && cnt++ % 1000 == 0)
-            printf("subsumption left: %10d (%10d subsumed, %10d deleted literals)\r",
-                    subsumption_queue.size(), subsumed, deleted_literals);
-
-        assert(c.size() > 1 || value(c[0]) == l_True);    // Unit-clauses should have been propagated before this point.
-
-        // Find best variable to scan:
-        Var best = var(c[0]);
-        for (int i = 1; i < c.size(); i++)
-            if (occurs[var(c[i])].size() < occurs[best].size())
-                best = var(c[i]);
-
-        // Search all candidates:
-        vec<CRef>& _cs = occurs.lookup(best);
-        CRef*       cs = (CRef*)_cs;
-
-        for (int j = 0; j < _cs.size() && !c.mark(); j++)
-            if (!ca[cs[j]].mark() && cs[j] != cr
-                    && (subsumption_lim == -1 || ca[cs[j]].size() < subsumption_lim)){
-                Lit l = c.subsumes(ca[cs[j]]);
-
-                if (l == lit_Undef)
-                    subsumed++, removeClause(cs[j]);
-                else if (l != lit_Error){
-                    deleted_literals++;
-
+            if (l == lit_Undef) {
+                removeClause(cs[j]);
+            } else if (l != lit_Error) {
+                if (c.size() > 1 && c.size() == ca[cs[j]].size()) {
+                    removeClause(cs[j]);
+                    return strengthenClause(cr, l);
+                } else {
                     if (!strengthenClause(cs[j], ~l))
                         return false;
 
-                    // Did current candidate get deleted from cs? Then check candidate at index j again:
+                    // Did current candidate get deleted from cs?
+                    // Then check candidate at index j again:
                     if (var(l) == best)
-                        j--;
+                        j -= 1;
                 }
             }
+        }
     }
 
     return true;
+}
+
+// Backward subsumption + backward subsumption resolution
+bool SimpSolver::backwardSubsumptionCheck()
+{
+    assert(decisionLevel() == 0);
+
+    bool ret = true;
+    while (ret && top_assigns < trail.size()) {
+        Lit l = trail[top_assigns++];
+        if (occurs[var(l)].size() > 0) {
+            ca[bwdsub_tmpunit][0] = l;
+            ca[bwdsub_tmpunit].calcAbstraction();
+            ret = backwardSubsumption(bwdsub_tmpunit);
+        }
+    }
+
+    while (ret && subsumption_queue.size() > 0) {
+        // Empty subsumption queue and return immediately on user-interrupt:
+        if (asynch_interrupt){
+            subsumption_queue.clear();
+            top_assigns = trail.size();
+            break; }
+
+        ret = backwardSubsumption(subsumption_queue.removeMin());
+
+        // Check top-level assignments by creating a dummy clause and placing it in the queue:
+        while (ret && top_assigns < trail.size()) {
+            ca[bwdsub_tmpunit][0] = trail[top_assigns++];
+            ca[bwdsub_tmpunit].calcAbstraction();
+            ret = backwardSubsumption(bwdsub_tmpunit);
+        }
+    }
+
+    return ret;
 }
 
 
@@ -587,17 +596,17 @@ bool SimpSolver::eliminate(bool turn_off_elim)
 
     // Main simplification loop:
     //
-    while (n_touched > 0 || bwdsub_assigns < trail.size() || elim_heap.size() > 0){
+    top_assigns = 0;
+    while (n_touched > 0 || top_assigns < trail.size() || elim_heap.size() > 0){
 
         gatherTouchedClauses();
-        // printf("  ## (time = %6.2f s) BWD-SUB: queue = %d, trail = %d\n", cpuTime(), subsumption_queue.size(), trail.size() - bwdsub_assigns);
-        if ((subsumption_queue.size() > 0 || bwdsub_assigns < trail.size()) && 
-            !backwardSubsumptionCheck()){
+        if ((subsumption_queue.size() > 0 || top_assigns < trail.size())
+                && !backwardSubsumptionCheck()) {
             ok = false; goto cleanup; }
 
         // Empty elim_heap and return immediately on user-interrupt:
         if (asynch_interrupt){
-            assert(bwdsub_assigns == trail.size());
+            assert(top_assigns == trail.size());
             assert(subsumption_queue.size() == 0);
             assert(n_touched == 0);
             elim_heap.clear();
