@@ -262,7 +262,11 @@ void Solver::cancelUntil(int level) {
     if (decisionLevel() > level){
         int lim = trail_lim[level];
         int last = trail_lim.last();
+#if 0
+        for (int c = lim; c < trail.size(); c++) {
+#else
         for (int c = trail.size()-1; c >= lim; c--){
+#endif
             Var      x  = var(trail[c]);
             assigns [x] = l_Undef;
             if (phase_saving > 1 || (phase_saving == 1 && c > last))
@@ -655,11 +659,12 @@ void Solver::removeSatisfied(vec<CRef>& cs)
 
 void Solver::rebuildOrderHeap()
 {
-    vec<Var> vs;
-    for (Var v = 0; v < nVars(); v++)
-        if (decision[v] && value(v) == l_Undef)
-            vs.push(v);
-    order_heap.build(vs);
+    while (top_assigns < trail.size()) {
+        Var v = var(trail[top_assigns++]);
+        setDecisionVar(v, false);
+        if (order_heap.inHeap(v))
+            order_heap.remove(v);
+    }
 }
 
 
@@ -687,7 +692,6 @@ bool Solver::simplify()
         removeSatisfied(clauses);
     }
     checkGarbage();
-    rebuildOrderHeap();
 
     simpDB_assigns = nAssigns();
     simpDB_props   = clauses_literals + learnts_literals;   // (shouldn't depend on stats really, but it will do for now)
@@ -775,8 +779,11 @@ lbool Solver::search(int nof_conflicts)
                 return l_Undef; }
 
             // Simplify the set of problem clauses:
-            if (decisionLevel() == 0 && !simplify())
-                return l_False;
+            if (decisionLevel() == 0) {
+                rebuildOrderHeap();
+                if (!simplify())
+                    return l_False;
+            }
 
             if (learnts.size()-nAssigns() >= (int)max_learnts)
                 // Reduce the set of learnt clauses:
@@ -883,6 +890,7 @@ lbool Solver::solve_()
     }
 
     // Search:
+    top_assigns = 0;
     int curr_restarts = 0;
     while (status == l_Undef){
         double rest_base = luby_restart ? luby(restart_inc, curr_restarts) : pow(restart_inc, curr_restarts);
