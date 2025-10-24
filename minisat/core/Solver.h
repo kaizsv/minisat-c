@@ -86,6 +86,7 @@ public:
     // 
     void    setPolarity    (Var v, lbool b); // Declare which polarity the decision heuristic should use for a variable. Requires mode 'polarity_user'.
     void    setDecisionVar (Var v, bool b);  // Declare if a variable should be eligible for selection in the decision heuristic.
+    void    clearAllDecision();
 
     // Read state:
     //
@@ -197,6 +198,7 @@ protected:
     OccLists<Lit, vec<Watcher>, WatcherDeleted, MkIndexLit>
                         watches;          // 'watches[lit]' is a list of constraints watching 'lit' (will go there if literal becomes true).
 
+    int top_assigns;
     Heap<Var,VarOrderLt>order_heap;       // A priority queue of variables ordered with respect to the variable activity.
 
     bool                ok;               // If FALSE, the constraints are already unsatisfiable. No part of the solver state may be used!
@@ -381,7 +383,7 @@ inline int      Solver::nFreeVars     ()      const   { return (int)dec_vars - (
 inline void     Solver::setPolarity   (Var v, lbool b){ user_pol[v] = b; }
 inline void     Solver::setDecisionVar(Var v, bool b)
 {
-    if (b) {
+    if (b && value(v) == l_Undef) {
         if (!decision[v]) {
             decision[v] = 1;
             dec_vars += 1;
@@ -393,6 +395,12 @@ inline void     Solver::setDecisionVar(Var v, bool b)
             dec_vars -= 1;
         }
     }
+}
+inline void Solver::clearAllDecision() {
+    int i;
+    for (i = 0; i < order_heap.size(); i++)
+        setDecisionVar(order_heap[i], false);
+    order_heap.clear();
 }
 inline void     Solver::setConfBudget(int64_t x){ conflict_budget    = conflicts    + x; }
 inline void     Solver::setPropBudget(int64_t x){ propagation_budget = propagations + x; }
