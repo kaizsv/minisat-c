@@ -141,6 +141,7 @@ class SimpSolver : public Solver {
     Heap<CRef,SubLt>    subsumption_queue;
     vec<char>           frozen;
     vec<char>           eliminated;
+    int                 bwdsub_assigns;
     int                 n_touched;
 
     // Temporaries:

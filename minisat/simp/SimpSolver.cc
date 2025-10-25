@@ -58,6 +58,7 @@ SimpSolver::SimpSolver() :
   , occurs             (ClauseDeleted(ca))
   , elim_heap          (ElimLt(n_occ))
   , subsumption_queue  (SubLt(ca))
+  , bwdsub_assigns     (0)
   , n_touched          (0)
 {
     vec<Lit> dummy(1,lit_Undef);
@@ -370,8 +371,8 @@ bool SimpSolver::backwardSubsumptionCheck()
     assert(decisionLevel() == 0);
 
     bool ret = true;
-    while (ret && top_assigns < trail.size()) {
-        Lit l = trail[top_assigns++];
+    while (ret && bwdsub_assigns < trail.size()) {
+        Lit l = trail[bwdsub_assigns++];
         if (occurs[var(l)].size() > 0) {
             ca[bwdsub_tmpunit][0] = l;
             ca[bwdsub_tmpunit].calcAbstraction();
@@ -383,14 +384,14 @@ bool SimpSolver::backwardSubsumptionCheck()
         // Empty subsumption queue and return immediately on user-interrupt:
         if (asynch_interrupt){
             subsumption_queue.clear();
-            top_assigns = trail.size();
+            bwdsub_assigns = trail.size();
             break; }
 
         ret = backwardSubsumption(subsumption_queue.removeMin());
 
         // Check top-level assignments by creating a dummy clause and placing it in the queue:
-        while (ret && top_assigns < trail.size()) {
-            ca[bwdsub_tmpunit][0] = trail[top_assigns++];
+        while (ret && bwdsub_assigns < trail.size()) {
+            ca[bwdsub_tmpunit][0] = trail[bwdsub_assigns++];
             ca[bwdsub_tmpunit].calcAbstraction();
             ret = backwardSubsumption(bwdsub_tmpunit);
         }
@@ -596,17 +597,16 @@ bool SimpSolver::eliminate(bool turn_off_elim)
 
     // Main simplification loop:
     //
-    top_assigns = 0;
-    while (n_touched > 0 || top_assigns < trail.size() || elim_heap.size() > 0){
+    while (n_touched > 0 || bwdsub_assigns < trail.size() || elim_heap.size() > 0){
 
         gatherTouchedClauses();
-        if ((subsumption_queue.size() > 0 || top_assigns < trail.size())
+        if ((subsumption_queue.size() > 0 || bwdsub_assigns < trail.size())
                 && !backwardSubsumptionCheck()) {
             ok = false; goto cleanup; }
 
         // Empty elim_heap and return immediately on user-interrupt:
         if (asynch_interrupt){
-            assert(top_assigns == trail.size());
+            assert(bwdsub_assigns == trail.size());
             assert(subsumption_queue.size() == 0);
             assert(n_touched == 0);
             elim_heap.clear();
