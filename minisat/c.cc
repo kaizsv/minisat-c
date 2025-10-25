@@ -122,9 +122,9 @@ bool minisat_simp_cube(struct minisat_solver *s, int len, const minisat_lit *ps)
     return s->SimpSolver::addCube(len, ps);
 }
 
-bool minisat_eliminate(struct minisat_solver *s)
+bool minisat_clean_subsumption(struct minisat_solver *s)
 {
-    return s->eliminate(false);
+    return s->clean_subsumption();
 }
 
 }

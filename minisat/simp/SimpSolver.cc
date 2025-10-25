@@ -58,7 +58,7 @@ SimpSolver::SimpSolver() :
   , occurs             (ClauseDeleted(ca))
   , elim_heap          (ElimLt(n_occ))
   , subsumption_queue  (SubLt(ca))
-  , n_touched          (0)
+  , bwdsub_assigns     (0)
 {
     vec<Lit> dummy(1,lit_Undef);
     ca.extra_clause_field = true; // NOTE: must happen before allocating the dummy clause below.
@@ -152,18 +152,13 @@ bool SimpSolver::addClause_(vec<Lit>& ps)
         CRef          cr = clauses.last();
         const Clause& c  = ca[cr];
 
-        // NOTE: the clause is added to the queue immediately and then
-        // again during 'gatherTouchedClauses()'. If nothing happens
-        // in between, it will only be checked once. Otherwise, it may
-        // be checked twice unnecessarily. This is an unfortunate
-        // consequence of how backward subsumption is used to mimic
-        // forward subsumption.
-        subsumption_queue.update(cr);
         for (int i = 0; i < c.size(); i++){
             occurs[var(c[i])].push(cr);
             n_occ[toInt(c[i])]++;
-            touched[var(c[i])] = 1;
-            n_touched++;
+            if (touched[var(c[i])] == 0) {
+                touched[var(c[i])] = 1;
+                extra_touched.push(var(c[i]));
+            }
             if (elim_heap.inHeap(var(c[i])))
                 elim_heap.increase(var(c[i]));
         }
@@ -175,14 +170,14 @@ bool SimpSolver::addClause_(vec<Lit>& ps)
 
 void SimpSolver::removeClause(CRef cr)
 {
-    const Clause& c = ca[cr];
-
-    if (use_simplification)
+    if (use_simplification) {
+        const Clause& c = ca[cr];
         for (int i = 0; i < c.size(); i++){
             n_occ[toInt(c[i])]--;
             updateElimHeap(var(c[i]));
             occurs.smudge(var(c[i]));
         }
+    }
 
     Solver::removeClause(cr);
 }
@@ -282,21 +277,22 @@ bool SimpSolver::merge(const Clause& _ps, const Clause& _qs, Var v, int& size)
 
 void SimpSolver::gatherTouchedClauses()
 {
-    if (n_touched == 0) return;
-
-    int i, j;
-    for (i = 0; i < nVars(); i++) {
-        if (touched[i]) {
-            const vec<CRef>& cs = occurs.lookup(i);
+    if (extra_touched.size() > 0) {
+        const Var *touched_var = (Var *) extra_touched;
+        const Var *end = touched_var + extra_touched.size();
+        while (touched_var < end) {
+            const vec<CRef>& cs = occurs.lookup(*touched_var);
+            int j;
             for (j = 0; j < cs.size(); j++) {
                 if (ca[cs[j]].mark() == 0 && !subsumption_queue.inHeap(cs[j]))
                     subsumption_queue.insert(cs[j]);
             }
-            touched[i] = 0;
+            touched[*touched_var] = 0;
+            touched_var += 1;
         }
-    }
 
-    n_touched = 0;
+        extra_touched.setsz(0);
+    }
 }
 
 
@@ -370,8 +366,8 @@ bool SimpSolver::backwardSubsumptionCheck()
     assert(decisionLevel() == 0);
 
     bool ret = true;
-    while (ret && top_assigns < trail.size()) {
-        Lit l = trail[top_assigns++];
+    while (ret && bwdsub_assigns < trail.size()) {
+        Lit l = trail[bwdsub_assigns++];
         if (occurs[var(l)].size() > 0) {
             ca[bwdsub_tmpunit][0] = l;
             ca[bwdsub_tmpunit].calcAbstraction();
@@ -383,14 +379,14 @@ bool SimpSolver::backwardSubsumptionCheck()
         // Empty subsumption queue and return immediately on user-interrupt:
         if (asynch_interrupt){
             subsumption_queue.clear();
-            top_assigns = trail.size();
+            bwdsub_assigns = trail.size();
             break; }
 
         ret = backwardSubsumption(subsumption_queue.removeMin());
 
         // Check top-level assignments by creating a dummy clause and placing it in the queue:
-        while (ret && top_assigns < trail.size()) {
-            ca[bwdsub_tmpunit][0] = trail[top_assigns++];
+        while (ret && bwdsub_assigns < trail.size()) {
+            ca[bwdsub_tmpunit][0] = trail[bwdsub_assigns++];
             ca[bwdsub_tmpunit].calcAbstraction();
             ret = backwardSubsumption(bwdsub_tmpunit);
         }
@@ -596,19 +592,17 @@ bool SimpSolver::eliminate(bool turn_off_elim)
 
     // Main simplification loop:
     //
-    top_assigns = 0;
-    while (n_touched > 0 || top_assigns < trail.size() || elim_heap.size() > 0){
+    while (extra_touched.size() > 0 || bwdsub_assigns < trail.size() || elim_heap.size() > 0){
 
         gatherTouchedClauses();
-        if ((subsumption_queue.size() > 0 || top_assigns < trail.size())
+        if ((subsumption_queue.size() > 0 || bwdsub_assigns < trail.size())
                 && !backwardSubsumptionCheck()) {
             ok = false; goto cleanup; }
 
         // Empty elim_heap and return immediately on user-interrupt:
         if (asynch_interrupt){
-            assert(top_assigns == trail.size());
+            assert(bwdsub_assigns == trail.size());
             assert(subsumption_queue.size() == 0);
-            assert(n_touched == 0);
             elim_heap.clear();
             goto cleanup; }
 
@@ -646,6 +640,7 @@ bool SimpSolver::eliminate(bool turn_off_elim)
     // If no more simplification is needed, free all simplification-related data structures:
     if (turn_off_elim){
         touched  .clear(true);
+        extra_touched.clear(true);
         occurs   .clear(true);
         n_occ    .clear(true);
         elim_heap.clear(true);
@@ -666,6 +661,27 @@ bool SimpSolver::eliminate(bool turn_off_elim)
     if (verbosity >= 1 && elimclauses.size() > 0)
         printf("|  Eliminated clauses:     %10.2f Mb                                      |\n", 
                double(elimclauses.size() * sizeof(uint32_t)) / (1024*1024));
+
+    return ok;
+}
+
+bool SimpSolver::clean_subsumption()
+{
+    if (!simplify())
+        return false;
+    else if (!use_simplification)
+        return true;
+
+    if (extra_touched.size() > 0 || bwdsub_assigns < trail.size()) {
+        gatherTouchedClauses();
+        if ((subsumption_queue.size() > 0 || bwdsub_assigns < trail.size())
+                && !backwardSubsumptionCheck()) {
+            ok = false;
+        }
+
+        assert(subsumption_queue.size() == 0);
+        checkGarbage();
+    }
 
     return ok;
 }

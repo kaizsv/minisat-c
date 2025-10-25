@@ -35,6 +35,6 @@ int minisat_conflict_len(struct minisat_solver *);
 int minisat_nr_occ(struct minisat_solver *, minisat_lit);
 void minisat_set_frozen(struct minisat_solver *, minisat_var, bool);
 bool minisat_simp_cube(struct minisat_solver *, int, const minisat_lit *);
-bool minisat_eliminate(struct minisat_solver *);
+bool minisat_clean_subsumption(struct minisat_solver *);
 
 #endif

@@ -84,6 +84,7 @@ Solver::Solver() :
   , dec_vars(0), num_clauses(0), num_learnts(0), clauses_literals(0), learnts_literals(0), max_literals(0), tot_literals(0)
 
   , watches            (WatcherDeleted(ca))
+  , top_assigns        (0)
   , order_heap         (VarOrderLt(activity))
   , ok                 (true)
   , cla_inc            (1)
@@ -889,7 +890,6 @@ lbool Solver::solve_()
     }
 
     // Search:
-    top_assigns = trail.size();
     int curr_restarts = 0;
     while (status == l_Undef){
         double rest_base = luby_restart ? luby(restart_inc, curr_restarts) : pow(restart_inc, curr_restarts);

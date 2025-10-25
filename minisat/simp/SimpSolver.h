@@ -63,6 +63,7 @@ class SimpSolver : public Solver {
     bool    solve       (Lit p, Lit q,        bool do_simp = true, bool turn_off_simp = false);
     bool    solve       (Lit p, Lit q, Lit r, bool do_simp = true, bool turn_off_simp = false);
     bool    eliminate   (bool turn_off_elim = false);  // Perform variable elimination based simplification. 
+    bool    clean_subsumption();
 
     // Memory managment:
     //
@@ -134,6 +135,7 @@ class SimpSolver : public Solver {
     bool                use_simplification;
     vec<uint32_t>       elimclauses;
     vec<char>           touched;
+    vec<Var>            extra_touched;
     OccLists<Var, vec<CRef>, ClauseDeleted>
                         occurs;
     vec<int>            n_occ;
@@ -141,7 +143,7 @@ class SimpSolver : public Solver {
     Heap<CRef,SubLt>    subsumption_queue;
     vec<char>           frozen;
     vec<char>           eliminated;
-    int                 n_touched;
+    int                 bwdsub_assigns;
 
     // Temporaries:
     //
