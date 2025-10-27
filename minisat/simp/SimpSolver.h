@@ -53,11 +53,6 @@ class SimpSolver : public Solver {
     void    setFrozen (Var v, bool b); // If a variable is frozen it will not be eliminated.
     bool    isEliminated(Var v) const;
 
-    // Alternative freeze interface (may replace 'setFrozen()'):
-    void    freezeVar (Var v);         // Freeze one variable so it will not be eliminated.
-    void    thaw      ();              // Thaw all frozen variables.
-
-
     // Solving:
     //
     bool    solve       (const vec<Lit>& assumps, bool do_simp = true, bool turn_off_simp = false);
@@ -88,7 +83,6 @@ class SimpSolver : public Solver {
     int     grow;              // Allow a variable elimination step to grow by a number of clauses (default to zero).
     int     clause_lim;        // Variables are not eliminated if it produces a resolvent with a length above this limit.
                                // -1 means no limit.
-    int     subsumption_lim;   // Do not check if subsumption against a clause larger than this. -1 means no limit.
     double  simp_garbage_frac; // A different limit for when to issue a GC during simplification (Also see 'garbage_frac').
 
     bool    use_asymm;         // Shrink clauses by asymmetric branching.
@@ -162,7 +156,8 @@ class SimpSolver : public Solver {
     void          gatherTouchedClauses     ();
     bool          merge                    (const Clause& _ps, const Clause& _qs, Var v, vec<Lit>& out_clause);
     bool          merge                    (const Clause& _ps, const Clause& _qs, Var v, int& size);
-    bool          backwardSubsumptionCheck (bool verbose = false);
+    bool          backwardSubsumption      (CRef);
+    bool          backwardSubsumptionCheck ();
     bool          eliminateVar             (Var v);
     void          extendModel              ();
 

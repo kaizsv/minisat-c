@@ -112,15 +112,12 @@ class Heap {
         assert(inHeap(k));
 
         int k_pos  = indices[k];
+        heap[k_pos] = heap.last();
+        indices[heap[k_pos]] = k_pos;
         indices[k] = -1;
-
-        if (k_pos < heap.size()-1){
-            heap[k_pos]          = heap.last();
-            indices[heap[k_pos]] = k_pos;
-            heap.pop();
+        heap.pop();
+        if (heap.size() > 1)
             percolateDown(k_pos);
-        }else
-            heap.pop();
     }
 
 
@@ -138,9 +135,7 @@ class Heap {
 
     // Rebuild the heap from scratch, using the elements in 'ns':
     void build(const vec<K>& ns) {
-        for (int i = 0; i < heap.size(); i++)
-            indices[heap[i]] = -1;
-        heap.clear();
+        Heap::clear();
 
         for (int i = 0; i < ns.size(); i++){
             // TODO: this should probably call reserve instead of relying on it being reserved already.
@@ -152,12 +147,19 @@ class Heap {
             percolateDown(i);
     }
 
-    void clear(bool dispose = false) 
-    { 
-        // TODO: shouldn't the 'indices' map also be dispose-cleared?
-        for (int i = 0; i < heap.size(); i++)
-            indices[heap[i]] = -1;
-        heap.clear(dispose); 
+    void clear(bool dispose = false)
+    {
+        if (dispose) {
+            indices.clear(true);
+            heap.clear(true);
+        } else {
+            K *data = (K *) heap;
+            for (int i = 0; i < heap.size(); i++) {
+                indices[data[i]] = -1;
+                data[i].~K();
+            }
+            heap.setsz(0);
+        }
     }
 };
 

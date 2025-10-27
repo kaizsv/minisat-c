@@ -84,6 +84,7 @@ Solver::Solver() :
   , dec_vars(0), num_clauses(0), num_learnts(0), clauses_literals(0), learnts_literals(0), max_literals(0), tot_literals(0)
 
   , watches            (WatcherDeleted(ca))
+  , top_assigns        (0)
   , order_heap         (VarOrderLt(activity))
   , ok                 (true)
   , cla_inc            (1)
@@ -655,11 +656,12 @@ void Solver::removeSatisfied(vec<CRef>& cs)
 
 void Solver::rebuildOrderHeap()
 {
-    vec<Var> vs;
-    for (Var v = 0; v < nVars(); v++)
-        if (decision[v] && value(v) == l_Undef)
-            vs.push(v);
-    order_heap.build(vs);
+    while (top_assigns < trail.size()) {
+        Var v = var(trail[top_assigns++]);
+        setDecisionVar(v, false);
+        if (order_heap.inHeap(v))
+            order_heap.remove(v);
+    }
 }
 
 
@@ -687,7 +689,6 @@ bool Solver::simplify()
         removeSatisfied(clauses);
     }
     checkGarbage();
-    rebuildOrderHeap();
 
     simpDB_assigns = nAssigns();
     simpDB_props   = clauses_literals + learnts_literals;   // (shouldn't depend on stats really, but it will do for now)
@@ -724,7 +725,10 @@ lbool Solver::search(int nof_conflicts)
         if (confl != CRef_Undef){
             // CONFLICT
             conflicts++; conflictC++;
-            if (decisionLevel() == 0) return l_False;
+            if (decisionLevel() == 0) {
+                rebuildOrderHeap();
+                return l_False;
+            }
 
             learnt_clause.clear();
             analyze(confl, learnt_clause, &backtrack_level, &is_temp);
@@ -775,8 +779,11 @@ lbool Solver::search(int nof_conflicts)
                 return l_Undef; }
 
             // Simplify the set of problem clauses:
-            if (decisionLevel() == 0 && !simplify())
-                return l_False;
+            if (decisionLevel() == 0) {
+                rebuildOrderHeap();
+                if (!simplify())
+                    return l_False;
+            }
 
             if (learnts.size()-nAssigns() >= (int)max_learnts)
                 // Reduce the set of learnt clauses:
