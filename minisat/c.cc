@@ -127,4 +127,9 @@ bool minisat_eliminate(struct minisat_solver *s)
     return s->eliminate(false);
 }
 
+bool minisat_disable_eliminate(struct minisat_solver *s)
+{
+    return s->eliminate(true);
+}
+
 }
