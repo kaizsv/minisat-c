@@ -196,16 +196,16 @@ bool SimpSolver::strengthenClause(CRef cr, Lit l)
         enqueue(c[0]);
         return CRef_Undef == propagate();
     }else{
-        // FIX: this is too inefficient but would be nice to have (properly implemented)
-        // if (!find(subsumption_queue, &c))
-        subsumption_queue.update(cr);
-
         detachClause(cr, true);
         c.strengthen(l);
         attachClause(cr);
         remove(occurs[var(l)], cr);
         n_occ[toInt(l)]--;
         updateElimHeap(var(l));
+
+        // FIX: this is too inefficient but would be nice to have (properly implemented)
+        // if (!find(subsumption_queue, &c))
+        subsumption_queue.update(cr);
 
         return true;
     }
@@ -341,7 +341,7 @@ bool SimpSolver::backwardSubsumption(CRef cr)
             if (l == lit_Undef) {
                 removeClause(cs[j]);
             } else if (l != lit_Error) {
-                if (c.size() > 1 && c.size() == ca[cs[j]].size()) {
+                if (c.size() == ca[cs[j]].size()) {
                     removeClause(cs[j]);
                     return strengthenClause(cr, l);
                 } else {
