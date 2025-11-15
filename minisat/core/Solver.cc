@@ -914,12 +914,14 @@ lbool Solver::solve_()
 }
 
 
-bool Solver::implies(const vec<Lit>& assumps, vec<Lit>& out)
+bool Solver::implies(int len, const int *assumps)
 {
     trail_lim.push(trail.size());
-    for (int i = 0; i < assumps.size(); i++){
-        Lit a = assumps[i];
 
+    Lit a;
+    const int *end = assumps + len;
+    while (assumps < end) {
+        a.x = *assumps++;
         if (value(a) == l_False){
             cancelUntil(0);
             return false;
@@ -927,15 +929,7 @@ bool Solver::implies(const vec<Lit>& assumps, vec<Lit>& out)
             uncheckedEnqueue(a);
     }
 
-    unsigned trail_before = trail.size();
-    bool     ret          = true;
-    if (propagate() == CRef_Undef){
-        out.clear();
-        for (int j = trail_before; j < trail.size(); j++)
-            out.push(trail[j]);
-    }else
-        ret = false;
-    
+    bool ret = CRef_Undef == propagate();
     cancelUntil(0);
     return ret;
 }

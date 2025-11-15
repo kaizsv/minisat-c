@@ -71,6 +71,11 @@ bool minisat_solve(struct minisat_solver *s, int len, const minisat_lit *ps)
     return s->Solver::solveLimited(len, ps) == l_True;
 }
 
+bool minisat_implies(struct minisat_solver *s, int len, const minisat_lit *ps)
+{
+    return s->implies(len, ps);
+}
+
 bool minisat_add_clause(struct minisat_solver *s, int len, const minisat_lit *ps)
 {
     return s->add_clause(len, ps);

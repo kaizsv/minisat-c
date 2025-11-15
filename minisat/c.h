@@ -27,6 +27,7 @@ void minisat_release_act(struct minisat_solver *);
 void minisat_set_act(struct minisat_solver *);
 minisat_lit minisat_get_act(struct minisat_solver *);
 bool minisat_solve(struct minisat_solver *, int, const minisat_lit *);
+bool minisat_implies(struct minisat_solver *, int, const minisat_lit *);
 
 minisat_lbool minisat_modelValue_Var(struct minisat_solver *, minisat_var);
 minisat_lit minisat_conflict_nthLit(struct minisat_solver *, int);
