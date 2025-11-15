@@ -189,6 +189,10 @@ install-static-lib: $(BUILD_DIR)/release/lib/$(MINISAT_SLIB) install-headers
 	$(INSTALL) -d $(DESTDIR)$(libdir)
 	$(INSTALL) -m 644 $(BUILD_DIR)/release/lib/$(MINISAT_SLIB) $(DESTDIR)$(libdir)
 
+install-static-profile: $(BUILD_DIR)/profile/lib/$(MINISAT_SLIB) install-headers
+	$(INSTALL) -d $(DESTDIR)$(libdir)
+	$(INSTALL) -m 644 $(BUILD_DIR)/profile/lib/$(MINISAT_SLIB) $(DESTDIR)$(libdir)
+
 install-lib: $(BUILD_DIR)/release/lib/$(MINISAT_SLIB) $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR).$(SOMINOR)$(SORELEASE)
 	$(INSTALL) -d $(DESTDIR)$(libdir)
 	$(INSTALL) -m 644 $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR).$(SOMINOR)$(SORELEASE) $(DESTDIR)$(libdir)
