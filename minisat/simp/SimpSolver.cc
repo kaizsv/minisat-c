@@ -66,6 +66,34 @@ SimpSolver::SimpSolver() :
     remove_satisfied      = false;
 }
 
+void SimpSolver::clone(const SimpSolver *s) {
+    Solver::clone(s);
+
+    grow               = s->grow;
+    clause_lim         = s->clause_lim;
+    simp_garbage_frac  = s->simp_garbage_frac;
+    use_asymm          = s->use_asymm;
+    use_rcheck         = s->use_rcheck;
+    use_elim           = s->use_elim;
+    extend_model       = s->extend_model;
+    merges             = s->merges;
+    asymm_lits         = s->asymm_lits;
+    eliminated_vars    = s->eliminated_vars;
+    elimorder          = s->elimorder;
+    use_simplification = s->use_simplification;
+    bwdsub_assigns     = s->bwdsub_assigns;
+    bwdsub_tmpunit     = s->bwdsub_tmpunit;
+
+    s->touched.copyTo(touched);
+    s->extra_touched.copyTo(extra_touched);
+    s->occurs.copyTo(occurs);
+    s->n_occ.copyTo(n_occ);
+    assert(elim_heap.empty() && subsumption_queue.empty());
+    // TODO copy elim_heap;
+    // TODO copy subsumption_queue;
+    s->frozen.copyTo(frozen);
+    s->eliminated.copyTo(eliminated);
+}
 
 SimpSolver::~SimpSolver()
 {

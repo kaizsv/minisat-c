@@ -24,6 +24,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include <assert.h>
 #include <limits>
 #include <new>
+#include <cstring>
 
 #include "minisat/mtl/IntTypes.h"
 #include "minisat/mtl/XAlloc.h"
@@ -89,6 +90,13 @@ public:
     T&       operator [] (Size index)       { return data[index]; }
 
     // Duplicatation (preferred instead):
+    void copyMem(vec<T>& copy) const {
+        copy.clear();
+        copy.data = (T *) xrealloc(copy.data, sizeof(T) * cap);
+        memcpy(copy.data, data, sizeof(T) * cap);
+        copy.sz = sz;
+        copy.cap = cap;
+    }
     void copyTo(vec<T>& copy) const { copy.clear(); copy.growTo(sz); for (Size i = 0; i < sz; i++) copy[i] = data[i]; }
     void moveTo(vec<T>& dest) { dest.clear(true); dest.data = data; dest.sz = sz; dest.cap = cap; data = NULL; sz = 0; cap = 0; }
     void setsz(Size size) { sz = size; }

@@ -237,6 +237,12 @@ class ClauseAllocator
         to.extra_clause_field = extra_clause_field;
         ra.moveTo(to.ra); }
 
+    void copyTo(ClauseAllocator& to) const
+    {
+        to.extra_clause_field = extra_clause_field;
+        ra.copyTo(to.ra);
+    }
+
     CRef alloc(const vec<Lit>& ps, bool learnt = false)
     {
         assert(sizeof(Lit)      == sizeof(uint32_t));
@@ -334,6 +340,7 @@ class OccLists
     Vec&  operator[](const K& idx){ return occs[idx]; }
     Vec&  lookup    (const K& idx){ if (dirty[idx]) clean(idx); return occs[idx]; }
 
+    void  copyTo    (OccLists &) const;
     void  cleanAll  ();
     void  clean     (const K& idx);
     void  smudge    (const K& idx){
@@ -350,6 +357,13 @@ class OccLists
     }
 };
 
+template<class K, class Vec, class Deleted, class MkIndex>
+void OccLists<K,Vec,Deleted,MkIndex>::copyTo(OccLists &to) const
+{
+    occs.copyMem(to.occs);
+    dirty.copyTo(to.dirty);
+    dirties.copyTo(to.dirties);
+}
 
 template<class K, class Vec, class Deleted, class MkIndex>
 void OccLists<K,Vec,Deleted,MkIndex>::cleanAll()

@@ -12,7 +12,8 @@
 #define minisat_l_True  1
 #define minisat_l_Undef 2
 
-struct minisat_solver* minisat_new();
+struct minisat_solver *minisat_new();
+void minisat_clone(struct minisat_solver *, const struct minisat_solver *);
 void minisat_delete(struct minisat_solver *);
 bool minisat_okay(struct minisat_solver *);
 

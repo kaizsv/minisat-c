@@ -52,6 +52,13 @@ namespace Minisat {
         void     clear  (bool dispose = false) { map.clear(dispose); }
         void     moveTo (IntMap& to)           { map.moveTo(to.map); to.index = index; }
         void     copyTo (IntMap& to) const     { map.copyTo(to.map); to.index = index; }
+        void     copyMem(IntMap& to) const {
+            to.map.growTo(map.size());
+            int i;
+            for (i = 0; i < map.size(); i++)
+                map[i].copyMem(to.map[i]);
+            to.index = index;
+        }
     };
 
 

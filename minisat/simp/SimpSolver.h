@@ -35,6 +35,7 @@ class SimpSolver : public Solver {
     //
     SimpSolver();
     ~SimpSolver();
+    void clone(const SimpSolver *);
 
     // Problem specification:
     //

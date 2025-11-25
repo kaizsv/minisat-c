@@ -103,6 +103,64 @@ Solver::Solver() :
   , asynch_interrupt   (false)
 {}
 
+void Solver::clone(const Solver *s) {
+    temporary_act    = s->temporary_act;
+    verbosity        = s->verbosity;
+    var_decay        = s->var_decay;
+    clause_decay     = s->clause_decay;
+    luby_restart     = s->luby_restart;
+    ccmin_mode       = s->ccmin_mode;
+    phase_saving     = s->phase_saving;
+    garbage_frac     = s->garbage_frac;
+    min_learnts_lim  = s->min_learnts_lim;
+    restart_first    = s->restart_first;
+    restart_inc      = s->restart_inc;
+    learntsize_adjust_start_confl = s->learntsize_adjust_start_confl;
+    learntsize_adjust_inc = s->learntsize_adjust_inc;
+
+    dec_vars         = s->dec_vars;
+    num_clauses      = s->num_clauses;
+    num_learnts      = s->num_learnts;
+    clauses_literals = s->clauses_literals;
+    learnts_literals = s->learnts_literals;
+    max_literals     = s->max_literals;
+    tot_literals     = s->tot_literals;
+
+    top_assigns      = s->top_assigns;
+    ok               = s->ok;
+    cla_inc          = s->cla_inc;
+    var_inc          = s->var_inc;
+    qhead            = s->qhead;
+    simpDB_assigns   = s->simpDB_assigns;
+    simpDB_props     = s->simpDB_props;
+    progress_estimate= s->progress_estimate;
+    remove_satisfied = s->remove_satisfied;
+    next_var         = s->next_var;
+    conflict_budget  = s->conflict_budget;
+    propagation_budget = s->propagation_budget;
+    asynch_interrupt = s->asynch_interrupt;
+    max_learnts      = s->max_learnts;
+
+    s->ca.copyTo(ca);
+
+    s->clauses.copyTo(clauses);
+    s->learnts.copyTo(learnts);
+    s->temporary.copyTo(temporary);
+    s->trail.copyMem(trail);
+    s->trail_lim.copyTo(trail_lim);
+
+    s->activity.copyTo(activity);
+    s->assigns.copyTo(assigns);
+    s->polarity.copyTo(polarity);
+    s->user_pol.copyTo(user_pol);
+    s->decision.copyTo(decision);
+    s->vardata.copyTo(vardata);
+    s->watches.copyTo(watches);
+    assert(s->order_heap.empty());
+    // TODO copy order_heap
+
+    s->seen.copyTo(seen);
+}
 
 Solver::~Solver()
 {

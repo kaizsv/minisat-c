@@ -15,7 +15,7 @@ static const minisat_lbool toC[3] = {
     minisat_l_Undef,
 };
 
-struct minisat_solver* minisat_new()
+struct minisat_solver *minisat_new()
 {
     struct minisat_solver *s = new minisat_solver();
     s->budgetOff();
@@ -23,6 +23,11 @@ struct minisat_solver* minisat_new()
     s->use_elim = false;
     s->use_asymm = false;
     return s;
+}
+
+void minisat_clone(struct minisat_solver *s, const struct minisat_solver *c)
+{
+    s->clone(c);
 }
 
 void minisat_delete(struct minisat_solver *s)

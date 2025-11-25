@@ -40,6 +40,7 @@ public:
     //
     Solver();
     virtual ~Solver();
+    void clone(const Solver *);
 
     // Problem specification:
     //
