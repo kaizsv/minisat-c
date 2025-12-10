@@ -66,6 +66,11 @@ int minisat_conflict_len(struct minisat_solver *s)
     return s->conflict.size();
 }
 
+bool minisat_has_conflict_lit(struct minisat_solver *s, minisat_lit lit)
+{
+    return s->conflict.has(toLit(lit));
+}
+
 bool minisat_solve(struct minisat_solver *s, int len, const minisat_lit *ps)
 {
     return s->Solver::solveLimited(len, ps) == l_True;

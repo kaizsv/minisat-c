@@ -31,6 +31,7 @@ bool minisat_solve(struct minisat_solver *, int, const minisat_lit *);
 minisat_lbool minisat_modelValue_Var(struct minisat_solver *, minisat_var);
 minisat_lit minisat_conflict_nthLit(struct minisat_solver *, int);
 int minisat_conflict_len(struct minisat_solver *);
+bool minisat_has_conflict_lit(struct minisat_solver *, minisat_lit);
 
 int minisat_nr_occ(struct minisat_solver *, minisat_lit);
 void minisat_set_frozen(struct minisat_solver *, minisat_var, bool);
