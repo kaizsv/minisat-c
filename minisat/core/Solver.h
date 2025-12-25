@@ -146,6 +146,8 @@ public:
     uint64_t solves, starts, decisions, propagations, conflicts;
     uint64_t dec_vars, num_clauses, num_learnts, clauses_literals, learnts_literals, max_literals, tot_literals;
 
+    vec<double>         activity;         // A heuristic measurement of the activity of a variable.
+
 protected:
 
     // Helper structures:
@@ -189,7 +191,6 @@ protected:
     vec<int>            trail_lim;        // Separator indices for different decision levels in 'trail'.
     vec<Lit>            assumptions;      // Current set of assumptions provided to solve by the user.
 
-    vec<double>         activity;         // A heuristic measurement of the activity of a variable.
     vec<lbool>          assigns;          // The current assignments.
     vec<char>           polarity;         // The preferred polarity of each variable.
     vec<lbool>          user_pol;         // The users preferred polarity of each variable.

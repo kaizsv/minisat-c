@@ -52,7 +52,6 @@ class SimpSolver : public Solver {
     // 
     void    setFrozen (Var v, bool b); // If a variable is frozen it will not be eliminated.
     bool    isEliminated(Var v) const;
-    int     nr_occ(int) const;
 
     // Solving:
     //
@@ -173,7 +172,6 @@ class SimpSolver : public Solver {
 //=================================================================================================
 // Implementation of inline methods:
 
-inline int SimpSolver::nr_occ(int x) const { return n_occ[x]; }
 inline bool SimpSolver::isEliminated (Var v) const { return eliminated[v]; }
 inline void SimpSolver::updateElimHeap(Var v) {
     assert(use_simplification);

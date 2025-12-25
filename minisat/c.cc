@@ -112,9 +112,9 @@ minisat_lit minisat_get_act(struct minisat_solver *s)
     return s->temporary_act;
 }
 
-int minisat_nr_occ(struct minisat_solver *s, minisat_lit l)
+double minisat_var_activity(struct minisat_solver *s, minisat_var v)
 {
-    return s->nr_occ(l);
+    return s->activity[v];
 }
 
 void minisat_set_frozen(struct minisat_solver *s, minisat_var v, bool b)
