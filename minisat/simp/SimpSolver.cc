@@ -83,8 +83,8 @@ Var SimpSolver::newVar(lbool upol, bool dvar) {
         n_occ     .push(0);
         occurs    .init(v);
         touched   .push(0);
-        if (use_asymm || use_elim)
-            elim_heap.insert(v);
+//        if (use_asymm || use_elim)
+//            elim_heap.insert(v);
     }
     return v; }
 
@@ -149,18 +149,20 @@ bool SimpSolver::addClause_(vec<Lit>& ps)
         return false;
 
     if (use_simplification && clauses.size() == nclauses + 1){
-        CRef          cr = clauses.last();
-        const Clause& c  = ca[cr];
+        CRef cr = clauses.last();
+        if (!subsumption_queue.inHeap(cr))
+            subsumption_queue.insert(cr);
 
+        const Clause& c = ca[cr];
         for (int i = 0; i < c.size(); i++){
             occurs[var(c[i])].push(cr);
             n_occ[toInt(c[i])]++;
-            if (touched[var(c[i])] == 0) {
-                touched[var(c[i])] = 1;
-                extra_touched.push(var(c[i]));
-            }
-            if (elim_heap.inHeap(var(c[i])))
-                elim_heap.increase(var(c[i]));
+//            if (touched[var(c[i])] == 0) {
+//                touched[var(c[i])] = 1;
+//                extra_touched.push(var(c[i]));
+//            }
+//            if (elim_heap.inHeap(var(c[i])))
+//                elim_heap.increase(var(c[i]));
         }
     }
 
@@ -171,6 +173,9 @@ bool SimpSolver::addClause_(vec<Lit>& ps)
 void SimpSolver::removeClause(CRef cr)
 {
     if (use_simplification) {
+        if (subsumption_queue.inHeap(cr))
+            subsumption_queue.remove(cr);
+
         const Clause& c = ca[cr];
         for (int i = 0; i < c.size(); i++){
             n_occ[toInt(c[i])]--;
@@ -667,17 +672,11 @@ bool SimpSolver::eliminate(bool turn_off_elim)
 
 bool SimpSolver::clean_subsumption()
 {
-    if (!simplify())
-        return false;
-    else if (!use_simplification)
+    if (!use_simplification)
         return true;
 
-    if (extra_touched.size() > 0 || bwdsub_assigns < trail.size()) {
-        gatherTouchedClauses();
-        if ((subsumption_queue.size() > 0 || bwdsub_assigns < trail.size())
-                && !backwardSubsumptionCheck()) {
-            ok = false;
-        }
+    if (subsumption_queue.size() > 0 || bwdsub_assigns < trail.size()) {
+        ok = backwardSubsumptionCheck();
 
         assert(subsumption_queue.size() == 0);
         checkGarbage();

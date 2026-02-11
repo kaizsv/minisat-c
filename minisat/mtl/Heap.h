@@ -116,7 +116,7 @@ class Heap {
         indices[heap[k_pos]] = k_pos;
         indices[k] = -1;
         heap.pop();
-        if (heap.size() > 1)
+        if (k_pos < heap.size())
             percolateDown(k_pos);
     }
 
