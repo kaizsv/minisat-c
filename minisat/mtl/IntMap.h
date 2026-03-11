@@ -82,7 +82,7 @@ namespace Minisat {
         
         
         void     insert      (K k) { in_set.reserve(k, 0); if (!in_set[k]) { in_set[k] = 1; xs.push(k); } }
-        bool     has         (K k) { in_set.reserve(k, 0); return in_set[k]; }
+        bool     has         (K k) { return in_set.has(k) ? in_set[k] : 0; }
     };
 
     #if 0
